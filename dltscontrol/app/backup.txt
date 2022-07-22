@@ -1,0 +1,210 @@
+from dltscontrol.dlts import DltsConstants, DltsCommand, DltsConnection, Scan, IScanDataPoint, ScanDataPoint, ScanImage
+
+from dltscontrol.app.core import OkAbortDialog
+from dltscontrol.app.scanning import ScanCreationService, StandardScanCreationPanel, StandardStandardScanCreationPanel, \
+    ScanCreationDialog, StandardScanCreationDialog
+    
+import tkinter as tk
+import tkinter.ttk as ttk
+import dltscontrol.tkext as tkext
+
+class ParallelScanConstants:
+
+    DATA_POINT_BYTE_COUNT = 6 # 2 byte for latch up and 2 byte for reflection scan, 2 byte time, REF,CUR, VOL
+
+    SCAN_START_COMMAND = str.encode("asm") # action scan multi
+
+class IParallelScanDataPoint(IScanDataPoint):
+    """ A scan data point which provides the latch up current and reflection scan value"""
+
+    def getLatchUpCurrent(self) -> int:
+        """ The first two bytes contain the latch up current. """
+        raise NotImplementedError
+
+    def getReflectionValue(self) -> int:
+        """ the last byte contains the reflection value. """
+        raise NotImplementedError
+        
+    def getLatchUpVoltage(self) -> int:
+        """ the last byte contains the reflection value. """
+        raise NotImplementedError
+
+
+class ParallelScanDataPoint(ScanDataPoint, IParallelScanDataPoint):
+    """ The scan data point of a `ParallelScan`. Consists of 3. First two: latch up current. third: reflection value. """
+
+    def __init__(self, rawData):
+        super().__init__(rawData)
+
+    def getLatchUpVoltage(self):
+        return int.from_bytes(self.RawData[-2:-1], DltsConstants.DLTS_INT_BYTE_ORDER) #selecting array elements in python: [start:stop:step length]#negative values are used as [array length - value]
+
+    def getLatchUpCurrent(self):
+        return int.from_bytes(self.RawData[-4:-3], DltsConstants.DLTS_INT_BYTE_ORDER) 																				
+																					
+    def getReflectionValue(self):
+        return int.from_bytes(self.RawData[-6:-5], DltsConstants.DLTS_INT_BYTE_ORDER)
+
+""" The `dltscontrol.dlts.ScanImage` class already implements the `dltscontrol.dlts.IScanImage` interface and supports 2D and 3D data. 
+It creates the numpy array from a sequence of data points by converting each single datatpoint to the desired data to pick from the data point. """
+
+class ParallelLatchUpImage(ScanImage):
+    """ 2D scan image which contains the latch-up currents """
+
+    _NAME = "Latch-Up Current Image"
+
+    def __init__(self, dataPoints, position, size, resolution, laserIntensity, zPosition, xTilt, scanDate, scanDuration):
+        super().__init__(dataPoints, position, size, resolution, laserIntensity, zPosition, xTilt, scanDate, scanDuration)
+
+    def getName(self) -> str:
+        return self._NAME
+
+    def convertDataPoint(self, dataPoint: IParallelScanDataPoint):
+        return dataPoint.getLatchUpCurrent()
+
+class ParallelReflectionImage(ScanImage):
+    """ 2D scan image which contains the number of registers. """
+
+    _NAME = "Reflection Scan Image"
+
+    def __init__(self, dataPoints, position, size, resolution, laserIntensity, zPosition, xTilt, scanDate, scanDuration):
+        super().__init__(dataPoints, position, size, resolution, laserIntensity, zPosition, xTilt, scanDate, scanDuration)
+
+    def getName(self) -> str:
+        return self._NAME
+
+    def convertDataPoint(self, dataPoint: IParallelScanDataPoint):
+        return dataPoint.getReflectionValue()
+        
+class ParallelVoltageImage(ScanImage):
+    """ 2D scan image which contains the number of registers. """
+
+    _NAME = "Voltage Scan Image"
+
+    def __init__(self, dataPoints, position, size, resolution, laserIntensity, zPosition, xTilt, scanDate, scanDuration):
+        super().__init__(dataPoints, position, size, resolution, laserIntensity, zPosition, xTilt, scanDate, scanDuration)
+
+    def getName(self) -> str:
+        return self._NAME
+
+    def convertDataPoint(self, dataPoint: IParallelScanDataPoint):
+        return dataPoint.getLatchUpVoltage()
+
+class ParallelScan(Scan):
+    """ The implemented parallel scan. """
+
+    _NAME = "Parallel Scan"
+
+    def __init__(self, config, positioningTime_ms = 0, xTilt = None, zPosition = None, laserIntensity = None):
+        super().__init__(config, positioningTime_ms, xTilt, zPosition, laserIntensity)
+
+    def getName(self) -> str:
+        return self._NAME
+
+    def createScanImages(self, dataPoints):
+        # create both scan images from the current data points
+        return (ParallelLatchUpImage(dataPoints, self.getAreaConfig().MinPosition, self.getAreaConfig().ScanImageSize, self.getAreaConfig().ScanResolution, 
+        self.getLaserIntensity(), self.getZPosition(), self.getXTilt(), self.getStartTime(), self.getDuration()), 
+		ParallelReflectionImage(dataPoints, self.getAreaConfig().MinPosition, self.getAreaConfig().ScanImageSize, self.getAreaConfig().ScanResolution, 
+		self.getLaserIntensity(), self.getZPosition(), self.getXTilt(), self.getStartTime(), self.getDuration()),
+		ParallelVoltageImage(dataPoints, self.getAreaConfig().MinPosition, self.getAreaConfig().ScanImageSize, self.getAreaConfig().ScanResolution, 
+		self.getLaserIntensity(), self.getZPosition(), self.getXTilt(), self.getStartTime(), self.getDuration())
+		)
+
+    def onScanStart(self, dltsConnection: DltsConnection):
+        # send the scan start command
+        dltsConnection.commandScanStart(ParallelScanConstants.SCAN_START_COMMAND)
+
+    def onScanAbort(self, dltsConnection: DltsConnection):
+        # send the scan abort command
+        dltsConnection.commandSkipUntilResponse(DltsCommand.ActionScanStop(), DltsConstants.DLTS_RESPONSE_ACKNOWLEDGE)
+
+    def onReceiveDataPoint(self, dltsConnection: DltsConnection):
+        # receive the data point which consists of five bytes
+        return ParallelScanDataPoint(dltsConnection.read(ParallelScanConstants.DATA_POINT_BYTE_COUNT))
+
+""" Now that the scan and its data structures have been created it has be integrated into the application.
+
+Scans are created using `dltscontrol.scanning.ScanCreationService`s. Those services are already in use and new ones can be added and created easily. Such
+a service has to implement a single factory method which returns a fully configured scan. To get a fully configured scan we need to create the necessary
+gui elements the user can interact with. Fortunately the most work is already done since the bit-flip scan doesn't need any special parameters.
+"""
+
+class ParallelScanCreationService(ScanCreationService[ParallelScan]):
+    """ Scan creation service to create a `ParallelScan`. """
+
+    def createScan(self) -> ParallelScan:
+        # simply open a dialog in which the user can configure the bit-flip scan paramters and return the result afterwards
+        return self.getContext().openDialog(ParallelScanCreationDialog).waitForResult()
+
+""" First we define an interface and implement a `dltscontrol.apptk.Panel` which allows the user to configure a bit-flip scan. The panel is then used 
+in a dialog whose result will be a bit-flip scan. """ 
+
+class ParallelScanCreationPanel(StandardScanCreationPanel):
+    """ Panel to create and configure a `ParallelScan` (panel interface)
+    
+    The `StandardScanCreationPanel` already provides the interface for the default scan parameters and is based on a `ScanAreaConfigurationPanel`. Since 
+    the bit-flip scan doesn't need more parameters than any standard scan the panel interface is already finished by deriving. 
+    """
+    def createScan(self) -> ParallelScan:
+        return ParallelScan(self.getScanAreaConfigurationPanel().createAreaScanConfig(), self.getPositioningTime_ms(),
+            self.getXTilt(), self.getZPosition(), self.getLaserIntensity())
+
+class StandardParallelScanCreationPanel(StandardStandardScanCreationPanel, ParallelScanCreationPanel):
+    """ Default `ParallelScanCreationPanel` implementation. 
+    
+    The `StandardStandardScanCreationPanel` implementation is totally sufficient. (No extra parameters)
+    """
+    pass
+
+class ParallelScanCreationDialog(ScanCreationDialog):
+    """ Dialog which allows to create and configure a `ParallelScan` based on a `ParallelScanCreationPanel`. (dialog interface) The dialog interface 
+    `ScanCreationDialog` already implements the ok-abort behavior we need. """
+    
+    def __init__(self, tkMaster, context):
+        super().__init__(tkMaster, context)
+
+    def _createScanCreationPanel(self) -> ParallelScanCreationPanel:
+        raise NotImplementedError 
+
+class StandardParallelScanCreationDialog(ParallelScanCreationDialog):
+    """ Default `ParallelScanCreationDialog` implementation defining the actual graphical appearance of the dialog. """
+
+    _SCAN_PANEL_BORDER_WIDTH = 2
+    _SCAN_PANEL_BORDER_RELIEF = tkext.TK_RELIEF_SUNKEN
+
+    _SCAN_PANEL_BORDER_PADX = 2
+
+    def __init__(self, tkMaster, context):
+        super().__init__(tkMaster, context)
+        # the constructors arguments should never be used
+
+        # GUI creation and configuration is usually done in the constructor using tkinter of course
+
+        # set the title of the actual dialog window on screen
+        self.Window.title("Configure " + ParallelScan._NAME)
+        self.Window.resizable(False, False)
+
+        # configure the scan creation panel cosmetics
+        self.ScanCreationPanel.MainFrame.config(borderwidth = self._SCAN_PANEL_BORDER_WIDTH, relief = self._SCAN_PANEL_BORDER_RELIEF)
+
+        # place the scan creation panel 
+        self.ScanCreationPanel.getTk().pack(side = tk.TOP, padx = self._SCAN_PANEL_BORDER_PADX)
+
+    def _createScanCreationPanel(self) -> ParallelScanCreationPanel:
+        return self.createPanel(ParallelScanCreationPanel, self.getTk())
+
+""" 
+After all components have been implemented they have to get inserted into the application's manifest. Only actual instantiatable implementations can
+be inserted. This should be done always at the end of a module so that it can be seen and modified easily. The new extenion has to be imported in the 
+extenions.py file in order get integrated.
+"""
+
+from dltscontrol.app.manifest import manifest
+
+# register the scan creation service with a proper scan name
+manifest.insert(ParallelScanCreationService, scanname = ParallelScan._NAME)
+
+# register the panel and dialog implementations
+manifest.insert(StandardParallelScanCreationPanel)
+manifest.insert(StandardParallelScanCreationDialog)

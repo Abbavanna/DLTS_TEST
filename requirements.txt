@@ -1,0 +1,7 @@
+tkfilebrowser
+pyserial
+numpy
+scipy
+scikit-image
+matplotlib==3.5.2
+jsonpickle

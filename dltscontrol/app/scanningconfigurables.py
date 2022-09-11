@@ -136,11 +136,16 @@ class ConfigurableStandardScanCreationDialog(StandardScanCreationDialog, MenuedS
         
         scanCreationPanel.setXTilt(values.get(self._X_TILT, scanCreationPanel.getXTilt()))
         scanCreationPanel.setZPosition(values.get(self._Z_POSITION, scanCreationPanel.getZPosition()))
-        scanCreationPanel.setLasetIntensity(values.get(self._LASER_INTENSITY, scanCreationPanel.getLaserIntensity()))
+        from dltscontrol.color_print import cprint
+        cprint('TEST2', 'debug_w')
+        scanCreationPanel.setLaserIntensity(values.get(self._LASER_INTENSITY, scanCreationPanel.getLaserIntensity()))
         
 
     def _loadConfigValues(self, userConfig: IUserConfig):
         """ Loads the values of the user config into the entry fields when the dialog opens. """
+
+        # TODO: Add default values for laser min, max, step
+
         scanCreationPanel: StandardScanCreationPanel = self.ScanCreationPanel
         areaConfigurationPanel = scanCreationPanel.getScanAreaConfigurationPanel()
 
@@ -169,7 +174,7 @@ class ConfigurableStandardScanCreationDialog(StandardScanCreationDialog, MenuedS
             scanCreationPanel.setZPosition(int(zPosition))
 
         if laserIntensity:
-            scanCreationPanel.setLasetIntensity(int(laserIntensity))
+            scanCreationPanel.setLaserIntensity(int(laserIntensity))
             
 
     def _saveConfigValues(self, userConfig: IUserConfig):

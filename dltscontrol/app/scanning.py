@@ -177,7 +177,19 @@ class ScanAreaConfiguarationPanel(Panel):
 
     def setYDelay_ms(self, yDelay_ms: int):
         raise NotImplementedError
-    
+
+    def getLaserMinIntensity(self) -> int:  # TEST  # NEW
+        raise NotImplementedError
+
+    def setLaserMinIntensity(self, value: int):  # TEST  # NEW
+        raise NotImplementedError
+
+    def getLaserStepIntensity(self) -> int:  # TEST  # NEW
+        raise NotImplementedError
+
+    def setLaserStepIntensity(self, value: int):  # TEST  # NEW
+        raise NotImplementedError
+
     def setValuesFromConfig(self, scanConfig: ScanAreaConfig):
         self.setXBoundsLow(scanConfig.XBoundsLow)
         self.setXBoundsHigh(scanConfig.XBoundsHigh)
@@ -189,9 +201,16 @@ class ScanAreaConfiguarationPanel(Panel):
         self.setYStepSize(scanConfig.YStepSize)
         self.setYDelay_ms(scanConfig.YStepDelay_ms)
 
-    def createAreaScanConfig(self) -> ScanAreaConfig:
-        return ScanAreaConfig((self.getXBoundsLow(), self.getXBoundsHigh()), (self.getYBoundsLow(), self.getYBoundsHigh()), 
-            (self.getXStepSize(), self.getYStepSize()), (self.getXDelay_ms(), self.getYDelay_ms()))
+    def createAreaScanConfig(self, intensity_multiplier=None) -> ScanAreaConfig:  # TEST
+        return ScanAreaConfig(
+            (self.getXBoundsLow(), self.getXBoundsHigh()),
+            (self.getYBoundsLow(), self.getYBoundsHigh()),
+            (self.getXStepSize(), self.getYStepSize()),
+            (self.getXDelay_ms(), self.getYDelay_ms()),
+            intensity_multiplier
+        )
+
+
 
 class VariabledScanAreaConfigurationPanel(ScanAreaConfiguarationPanel):
     """ Panel interface, variable based `ScanAreaConfiguarationPanel`. All configurable values are stored in tkinter variables. """
@@ -298,7 +317,8 @@ class VariabledScanAreaConfigurationPanel(ScanAreaConfiguarationPanel):
 
     def setYDelay_ms(self, yDelay_ms: int):
         self._yDelayVariable.set(yDelay_ms)
-            
+
+# This
 class StandardScanAreaConfiguarationPanel(VariabledScanAreaConfigurationPanel):
     """ Panel which allows to create and configure a `ScanAreaConfig`. """
 
@@ -316,7 +336,7 @@ class StandardScanAreaConfiguarationPanel(VariabledScanAreaConfigurationPanel):
         super().__init__(tkMaster, context, componentContext)
 
         xFrame = ttk.Frame(self.getTk())
-        
+
         xBoundsFrame = ttk.Frame(xFrame)
         xBoundsLabel = ttk.Label(xBoundsFrame, text = "X - Bounds (Min - Max)")
         xBoundsLowEntry = tkext.IntEntry(xBoundsFrame, width = self._ENTRY_WIDTH, textvariable = self.XBoundsLowVariable)
@@ -331,7 +351,7 @@ class StandardScanAreaConfiguarationPanel(VariabledScanAreaConfigurationPanel):
         xDelayEntry = tkext.IntEntry(xDelayFrame, width = self._ENTRY_WIDTH, textvariable = self.XDelayMillisecondsVariable)
 
         yFrame = ttk.Frame(self.getTk())
-        
+
         yBoundsFrame = ttk.Frame(yFrame)
         yBoundsLabel = ttk.Label(yBoundsFrame, text = "Y - Bounds (Min - Max)")
         yBoundsLowEntry = tkext.IntEntry(yBoundsFrame, width = self._ENTRY_WIDTH, textvariable = self.YBoundsLowVariable)
@@ -379,7 +399,7 @@ class StandardScanAreaConfiguarationPanel(VariabledScanAreaConfigurationPanel):
 
         xFrame.pack(side = tk.TOP, padx = self._TOP_FRAME_PADX, pady = self._TOP_FRAME_PADY)
         yFrame.pack(side = tk.TOP, padx = self._TOP_FRAME_PADX, pady = self._TOP_FRAME_PADY)
-            
+
 class ScanCreationPanel(Panel):
     """ Panel interface to create a `IScan`. """
 
@@ -401,7 +421,7 @@ class StandardScanCreationPanel(ScanCreationPanel):
 
     def getPositioningTime_ms(self) -> int:
         raise NotImplementedError
-    
+
     def setPositioningTime_ms(self, positioningTime_ms: int):
         raise NotImplementedError
 
@@ -420,8 +440,21 @@ class StandardScanCreationPanel(ScanCreationPanel):
     def getLaserIntensity(self) -> int:
         raise NotImplementedError
 
-    def setLasetIntensity(self, intensity: int):
+    def setLaserIntensity(self, intensity: int):
         raise NotImplementedError
+
+    def getLaserMinIntensity(self) -> int:  # TEST  # NEW
+        raise NotImplementedError
+
+    def setLaserMinIntensity(self, value: int):  # TEST  # NEW
+        raise NotImplementedError
+
+    def getLaserStepIntensity(self) -> int:  # TEST  # NEW
+        raise NotImplementedError
+
+    def setLaserStepIntensity(self, value: int):  # TEST  # NEW
+        raise NotImplementedError
+
 
     def createScan(self) -> Scan:
         raise NotImplementedError
@@ -440,6 +473,12 @@ class VariabledStandardScanCreationPanel(StandardScanCreationPanel):
         self._zPositionVariable = tkext.IntNoneVar(self.getTk(), self._DEFAULT_ADDITIONAL_SCAN_VALUES)
         self._laserIntensityVariable = tkext.IntNoneVar(self.getTk(), self._DEFAULT_ADDITIONAL_SCAN_VALUES)
 
+        # New Variables
+        self._laserMinIntensityVariable = tkext.IntNoneVar(self.getTk(), self._DEFAULT_ADDITIONAL_SCAN_VALUES)
+        self._laserMaxIntensityVariable = tkext.IntNoneVar(self.getTk(), self._DEFAULT_ADDITIONAL_SCAN_VALUES)
+        self._laserStepIntensityVariable = tkext.IntNoneVar(self.getTk(), self._DEFAULT_ADDITIONAL_SCAN_VALUES)
+
+
     @property
     def PositionTime_msVariable(self) -> tkext.IntNoneVar:
         return self._positioningTime_msVariable
@@ -456,9 +495,23 @@ class VariabledStandardScanCreationPanel(StandardScanCreationPanel):
     def LaserIntensityVariable(self) -> tkext.IntNoneVar:
         return self._laserIntensityVariable
 
+    # New Properties
+    @property
+    def LaserMinIntensityVariable(self) -> tkext.IntNoneVar:
+        return self._laserMinIntensityVariable
+
+    @property
+    def LaserMaxIntensityVariable(self) -> tkext.IntNoneVar:
+        return self._laserMaxIntensityVariable
+
+    @property
+    def LaserStepIntensityVariable(self) -> tkext.IntNoneVar:
+        return self._laserStepIntensityVariable
+
+
     def getPositioningTime_ms(self) -> int:
         return self._positioningTime_msVariable.get()
-    
+
     def setPositioningTime_ms(self, positioningTime_ms: int):
         self._positioningTime_msVariable.set(positioningTime_ms)
 
@@ -477,8 +530,30 @@ class VariabledStandardScanCreationPanel(StandardScanCreationPanel):
     def getLaserIntensity(self) -> int:
         return self._laserIntensityVariable.get()
 
-    def setLasetIntensity(self, intensity: int):
+    def setLaserIntensity(self, intensity: int):
         self._laserIntensityVariable.set(intensity)
+
+    # new methods
+    def getLaserMinIntensity(self) -> int:
+        return self._laserMinIntensityVariable.get()
+
+    def setLaserMinIntensity(self, value: int):
+        self._laserMinIntensityVariable.set(value)
+
+    def getLaserMaxIntensity(self) -> int:
+        return self._laserMaxIntensityVariable.get()
+
+    def setLaserMaxIntensity(self, value: int):
+        self._laserMaxIntensityVariable.set(value)
+
+    def getLaserStepIntensity(self) -> int:
+        return self._laserStepIntensityVariable.get()
+
+    def setLaserStepIntensity(self, value: int):
+        self._laserStepIntensityVariable.set(value)
+
+    getLaserIntensity = getLaserMaxIntensity
+    setLaserIntensity = setLaserMaxIntensity
 
 class StandardStandardScanCreationPanel(VariabledStandardScanCreationPanel):
     """ Panel which allows to create and configure a `Scan`. """
@@ -500,13 +575,13 @@ class StandardStandardScanCreationPanel(VariabledStandardScanCreationPanel):
         positioningTimeFrame = ttk.Frame(gridFrame)
         positioningTimeLabel = ttk.Label(positioningTimeFrame, text = "Positioning Time [ms]")
         positioningTimeEntry = tkext.IntEntry(positioningTimeFrame, width = self._ENTRY_WIDTH, textvariable = self.PositionTime_msVariable)
-            
+
         laserIntensityFrame = ttk.Frame(gridFrame)
         laserIntensityLabel = ttk.Label(laserIntensityFrame, text = "Laser Intensity")
         #laserIntensityLabel = ttk.Label(laserIntensityFrame, text = "Laser Intensity (Optional)")
         laserIntensityEntry = tkext.IntEntry(laserIntensityFrame, width = self._ENTRY_WIDTH, textvariable = self.LaserIntensityVariable)
-        laserIntensityEntry.bind('<1>', self.setLasetIntensity(self.LaserIntensityVariable))
-        laserIntensityEntry.bind('<2>', self.setLasetIntensity(self.LaserIntensityVariable))
+        laserIntensityEntry.bind('<1>', self.setLaserIntensity(self.LaserIntensityVariable))
+        laserIntensityEntry.bind('<2>', self.setLaserIntensity(self.LaserIntensityVariable))
 
         xTiltFrame = ttk.Frame(gridFrame)
         xTiltLabel = ttk.Label(xTiltFrame, text = "X - Tilt (Optional)")
@@ -532,7 +607,7 @@ class StandardStandardScanCreationPanel(VariabledStandardScanCreationPanel):
         xTiltFrame.grid(row = 1, column = 0, padx = self._VARIABLE_PADX, pady = self._VARIABLE_PADY, sticky = tk.E)
         laserIntensityFrame.grid(row = 0, column = 1, padx = self._VARIABLE_PADX, pady = self._VARIABLE_PADY, sticky = tk.E)
         zPositionFrame.grid(row = 1, column = 1, padx = self._VARIABLE_PADX, pady = self._VARIABLE_PADY, sticky = tk.E)
-        
+
         gridFrame.pack(side = tk.RIGHT)
 
         self._scanAreaConfigurationPanel.getTk().pack(side = tk.TOP, fill = tk.X)
@@ -540,6 +615,114 @@ class StandardStandardScanCreationPanel(VariabledStandardScanCreationPanel):
 
     def getScanAreaConfigurationPanel(self) -> ScanAreaConfiguarationPanel:
         return self._scanAreaConfigurationPanel
+
+
+class StandardMultiIntScanCreationPanel(VariabledStandardScanCreationPanel): #New
+    """
+        Panel which allows to create and configure a `Scan`.
+        Additional options for Min Max Intensity and step,
+    """
+
+    _ENTRY_WIDTH = 6
+    _ENTRY_PADX = 1
+
+    _VARIABLE_PADX = 8
+    _VARIABLE_PADY = 4
+
+    def __init__(self, tkMaster, context, componentContext):
+        super().__init__(tkMaster, context, componentContext)
+
+        self._scanAreaConfigurationPanel = self.createPanel(ScanAreaConfiguarationPanel, self.getTk())
+
+        variablesFrame = ttk.Frame(self.getTk())
+        gridFrame_0 = ttk.Frame(variablesFrame)
+        gridFrame_1 = ttk.Frame(variablesFrame)
+        gridFrame_2 = ttk.Frame(variablesFrame)
+        gridFrame_3 = ttk.Frame(variablesFrame)
+
+
+        positioningTimeFrame = ttk.Frame(gridFrame_0)
+        positioningTimeLabel = ttk.Label(positioningTimeFrame, text="Positioning Time [ms]")
+        positioningTimeEntry = tkext.IntEntry(positioningTimeFrame,
+                                              width=self._ENTRY_WIDTH,
+                                              textvariable=self.PositionTime_msVariable)
+        positioningTimeLabel.pack(side=tk.LEFT)
+        positioningTimeEntry.pack(side=tk.RIGHT, padx=10)
+
+        # DEPRECATED
+        laserIntensityFrame = ttk.Frame(gridFrame_3)
+        laserIntensityLabel = ttk.Label(laserIntensityFrame, text="Controller Laser Intensity")
+        laserIntensityEntry = tkext.IntEntry(laserIntensityFrame,
+                                             width=self._ENTRY_WIDTH,
+                                             textvariable=self.LaserIntensityVariable)
+        # laserIntensityEntry.bind('<1>', self.setLaserIntensity(self.LaserIntensityVariable))  # TEST
+        # laserIntensityEntry.bind('<2>', self.setLaserIntensity(self.LaserIntensityVariable))  # TEST
+        laserIntensityLabel.pack(side=tk.LEFT)
+        laserIntensityEntry.pack(side=tk.RIGHT, padx=self._ENTRY_PADX)
+        laserIntensityFrame.grid(row=0, column=1, padx=self._VARIABLE_PADX, pady=self._VARIABLE_PADY, sticky=tk.E)
+
+
+        # New Additions to the laser configuration
+        laserMinIntensityFrame = ttk.Frame(gridFrame_1)
+        laserMinIntensityLabel = ttk.Label(laserMinIntensityFrame, text="Laser Min")
+        laserMinIntensityEntry = tkext.IntEntry(laserMinIntensityFrame,
+                                                width=self._ENTRY_WIDTH,
+                                                textvariable=self.LaserMinIntensityVariable)
+        laserMinIntensityLabel.pack(side=tk.LEFT)
+        laserMinIntensityEntry.pack(side=tk.RIGHT, padx=self._ENTRY_PADX)
+
+        laserMaxIntensityFrame = ttk.Frame(gridFrame_1)
+        laserMaxIntensityLabel = ttk.Label(laserMaxIntensityFrame, text="Laser Max")
+        laserMaxIntensityEntry = tkext.IntEntry(laserMaxIntensityFrame,
+                                                width=self._ENTRY_WIDTH,
+                                                textvariable=self.LaserMaxIntensityVariable)
+        # laserMaxIntensityEntry.bind('<1>', self.setLaserIntensity(self.LaserIntensityVariable))
+        # laserMaxIntensityEntry.bind('<2>', self.setLaserIntensity(self.LaserIntensityVariable))
+        laserMaxIntensityLabel.pack(side=tk.LEFT)
+        laserMaxIntensityEntry.pack(side=tk.RIGHT, padx=self._ENTRY_PADX)
+
+        laserStepIntensityFrame = ttk.Frame(gridFrame_1)
+        laserStepIntensityLabel = ttk.Label(laserStepIntensityFrame, text="Laser Step")
+        laserStepIntensityEntry = tkext.IntEntry(laserStepIntensityFrame,
+                                                 width=self._ENTRY_WIDTH,
+                                                 textvariable=self.LaserStepIntensityVariable)
+        laserStepIntensityLabel.pack(side=tk.LEFT)
+        laserStepIntensityEntry.pack(side=tk.RIGHT, padx=self._ENTRY_PADX)
+
+        self.setLaserMinIntensity(2400)  # TEST
+        self.setLaserMaxIntensity(2450)  # TEST
+        self.setLaserStepIntensity(20)  # TEST
+
+        xTiltFrame = ttk.Frame(gridFrame_2)
+        xTiltLabel = ttk.Label(xTiltFrame, text="X - Tilt (Optional)")
+        xTiltEntry = tkext.IntEntry(xTiltFrame, width=self._ENTRY_WIDTH, textvariable=self.XTiltVariable)
+        xTiltLabel.pack(side=tk.LEFT)
+        xTiltEntry.pack(side=tk.RIGHT, padx=self._ENTRY_PADX)
+
+        zPositionFrame = ttk.Frame(gridFrame_2)
+        zPositionLabel = ttk.Label(zPositionFrame, text="Z - Position (Optional)")
+        zPositionEntry = tkext.IntEntry(zPositionFrame, width=self._ENTRY_WIDTH, textvariable=self.ZPositionVariable)
+        zPositionLabel.pack(side=tk.LEFT)
+        zPositionEntry.pack(side=tk.RIGHT, padx=self._ENTRY_PADX)
+
+        positioningTimeFrame.pack()
+        laserMinIntensityFrame.grid(row=0, column=0, padx=self._VARIABLE_PADX, pady=self._VARIABLE_PADY, sticky=tk.E)
+        laserMaxIntensityFrame.grid(row=0, column=1, padx=self._VARIABLE_PADX, pady=self._VARIABLE_PADY, sticky=tk.E)
+        laserStepIntensityFrame.grid(row=0, column=2, padx=self._VARIABLE_PADX, pady=self._VARIABLE_PADY, sticky=tk.E)
+        xTiltFrame.grid(row=0, column=0, padx=self._VARIABLE_PADX, pady=self._VARIABLE_PADY, sticky=tk.E)
+        zPositionFrame.grid(row=0, column=1, padx=self._VARIABLE_PADX, pady=self._VARIABLE_PADY, sticky=tk.E)
+
+        gridFrame_0.grid(row=0, sticky=tk.E)
+        gridFrame_1.grid(row=1, sticky=tk.E)
+        gridFrame_2.grid(row=2, sticky=tk.E)
+        gridFrame_3.grid(row=2, sticky=tk.E)
+
+        self._scanAreaConfigurationPanel.getTk().pack(side=tk.TOP, fill=tk.X)
+        variablesFrame.pack(side=tk.TOP, fill=tk.X)
+
+    def getScanAreaConfigurationPanel(self) -> ScanAreaConfiguarationPanel:
+        return self._scanAreaConfigurationPanel
+
 
 class ScanProgressPanel(Panel):
     """ Panel interface which shows the progress status of an `IScan` and needs to be refreshed manually. """

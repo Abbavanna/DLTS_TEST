@@ -8,6 +8,7 @@ Applets
 from typing import Dict
 
 from dltscontrol.apptk import Applet, showerror
+from dltscontrol.dlts import DltsConstants, DltsCommand, DltsConnection #AFP
 
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -50,6 +51,7 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
     _X_TILT_NAME = "X Tilt"
     _LASER_INTENSITY_NAME = "Laser Intensity"
 
+
     _SCALE_NAMES = [_X_POSITION_NAME, _Y_POSITION_NAME, _Z_POSITION_NAME, _X_TILT_NAME, _LASER_INTENSITY_NAME]
     _SCALE_MIN_MAX_KEYS = {_X_POSITION_NAME: (_USER_CONFIG_X_MIN_KEY, _USER_CONFIG_X_MAX_KEY),
                             _Y_POSITION_NAME: (_USER_CONFIG_Y_MIN_KEY, _USER_CONFIG_Y_MAX_KEY),
@@ -76,7 +78,7 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         super().__init__(tkMaster, context)
         
         self.Window.title("Controller")
-        self.Window.geometry("450x300")
+        self.Window.geometry("650x400") #450x300 #AFP
 
         self.createMenuBarIfNotExistent()
 
@@ -176,21 +178,33 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         laserPulseLowerFrame = ttk.Frame(laserPulseFrame)
 
         laserPulseButton = ttk.Button(laserPulseLowerFrame, text = "Fire", command = self._onLaserPulseClick, width = 10)
+
+        autofocusFrame = ttk.Frame(self.getTk(), relief=tkext.TK_RELIEF_SUNKEN, padding=2 * self._DEFAULT_PADDING) #AFP
+
+        autofocusHeading = ttk.Label(autofocusFrame, text="FOCUS PARAMETERS", justify=tk.LEFT)
+        autofocusLowerFrame = ttk.Frame(autofocusFrame)
+
+        autofocusButton = ttk.Button(autofocusLowerFrame, text="AUTO FOCUS", command=self.setAutoFocus, width=15) #AFP
+
         laserPulseIntensityLabel = ttk.Label(laserPulseLowerFrame, text = "Intensity")
         laserPulseIntensityEntry = tkext.IntEntry(laserPulseLowerFrame, textvariable = self._laserPulseIntensityVariable, width = self._DEFAULT_ENTRY_WIDTH)
         laserPulseFrequencyLabel = ttk.Label(laserPulseLowerFrame, text = "Frequency")
         laserPulseFrequencyEntry = tkext.IntEntry(laserPulseLowerFrame, textvariable = self._laserPulseFrequencyVariable, width = self._DEFAULT_ENTRY_WIDTH)
 
         laserPulseButton.pack(side = tk.RIGHT, padx = self._DEFAULT_PADDING, pady = self._DEFAULT_PADDING)
+        autofocusButton.pack(side=tk.LEFT, padx=self._DEFAULT_PADDING, pady=self._DEFAULT_PADDING) #AFP
         laserPulseFrequencyEntry.pack(side = tk.RIGHT, padx = self._DEFAULT_PADDING, pady = self._DEFAULT_PADDING)
         laserPulseFrequencyLabel.pack(side = tk.RIGHT, padx = self._DEFAULT_PADDING, pady = self._DEFAULT_PADDING)
         laserPulseIntensityEntry.pack(side = tk.RIGHT, padx = self._DEFAULT_PADDING, pady = self._DEFAULT_PADDING)
         laserPulseIntensityLabel.pack(side = tk.RIGHT, padx = self._DEFAULT_PADDING, pady = self._DEFAULT_PADDING)
 
         laserPulseHeading.pack(side = tk.TOP, fill = tk.X, padx = self._DEFAULT_PADDING, pady = self._DEFAULT_PADDING)
+        autofocusHeading.pack(side = tk.TOP, fill = tk.X, padx = self._DEFAULT_PADDING, pady = self._DEFAULT_PADDING) #AFP
         laserPulseLowerFrame.pack(side = tk.TOP, fill = tk.X)
+        autofocusLowerFrame.pack(side=tk.TOP, fill=tk.X)#AFP
 
         laserPulseFrame.pack(side = tk.TOP, fill = tk.X, padx = 2 * self._DEFAULT_PADDING, pady = 2 * self._DEFAULT_PADDING)
+        autofocusFrame.pack(side=tk.TOP, fill=tk.X, padx=2 * self._DEFAULT_PADDING, pady=2 * self._DEFAULT_PADDING)#AFP
 
         # build laser reflection display
         laserReflectionFrame = ttk.Frame(self.getTk(), relief = tkext.TK_RELIEF_SUNKEN, padding = 2 * self._DEFAULT_PADDING)
@@ -265,6 +279,16 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         if dlts is not None:
             dlts.fireLaserPulse(self._laserPulseIntensityVariable.get(), self._laserPulseFrequencyVariable.get())
 
+    def setAutoFocus(self, dltsConnection: DltsConnection):  # NEW
+        # send an autofocus command to the DLTS
+        dltsConnection.commandDataRetrieval(
+            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)  # AFP
+
+        if self._autoFocus:
+              self.setAutoFocus(dltsConnection)
+              extra_data = dltsConnection.readAll()
+
+
     def _checkLaserReflectionUpdateTask(self):
         """ Checks if the displayed laser reflection value shall be updated and starts a periodic calling task if necessary. """
         update = self._laserReflectionUpdateVariable.get() and self.IsFocusIn
@@ -313,6 +337,7 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
 
                     self._laserPulseIntensityVariable.set(dlts.getLaserPulseIntensity()) 
                     self._laserPulseFrequencyVariable.set(dlts.getLaserPulseFrequency())
+
         except Exception as ex:
             stopTask = True
             logger.exception(ex)

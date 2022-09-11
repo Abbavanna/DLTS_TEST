@@ -1,9 +1,9 @@
-""" 
-Module to control and communicate with DTLSs. 
+"""
+Module to control and communicate with DTLSs.
 
 This module provides an API to communicate with and acquire data from DLTSs. It relys on a custom `DltsConnection` implementation. Once the
 DLTS connection has been implemented it can be used to command the connected DLTS. Furthermore a `DLTS` may be used to get an even more
-abstract and convenient communication interface to the DLTS. 
+abstract and convenient communication interface to the DLTS.
 
 Example
 -------
@@ -17,6 +17,7 @@ Example
 from typing import Tuple, List, Callable, TypeVar, Generic, Sequence, Type, Union, Iterable
 from collections import deque
 from io import RawIOBase
+
 
 from dltscontrol import event
 
@@ -80,7 +81,11 @@ class DltsCommand:
     _Z_AXIS = "z"
     _TILT_AXIS = "t"
 
+    _I_AXIS = "i"
+
     _INTENSITY = "i"
+    _MIN_INTENSITY = "e"
+    _MAX_INTENSITY = "g"
     _PULSE_INTENSITY = "p"
     _PULSE_FREQUENCY = "f"
 
@@ -90,7 +95,7 @@ class DltsCommand:
     _PIXEL = "p"
     _POINT = "p"
     _LINE = "l"
-    _AREA = "a"  
+    _AREA = "a"
     _LATCHUP = "u"
     _MULTISCAN = "n"
     _AUTOFOCUS = "J"
@@ -108,7 +113,7 @@ class DltsCommand:
     @staticmethod
     def _encodeToUInt16(value: int) -> bytes:
         encoded: bytes = None
-        
+
         try:
             encoded = value.to_bytes(2, DltsConstants.DLTS_INT_BYTE_ORDER)
         except OverflowError as oe:
@@ -149,7 +154,7 @@ class DltsCommand:
     @staticmethod
     def SetScanAxisHighBoundary(axis: str, boundary: int) -> bytes:
         return DltsCommand.SetScanAxisBoundary(axis, DltsCommand._BOUNDARY_HIGH, boundary)
-    
+
     @staticmethod
     def SetScanAxisLowBoundary(axis: str, boundary: int) -> bytes:
         return DltsCommand.SetScanAxisBoundary(axis, DltsCommand._BOUNDARY_LOW, boundary)
@@ -157,7 +162,7 @@ class DltsCommand:
     @staticmethod
     def SetScanXAxisLowBoundary(boundary: int) -> bytes:
         return DltsCommand.SetScanAxisLowBoundary(DltsCommand._X_AXIS, boundary)
-    
+
     @staticmethod
     def SetScanXAxisHighBoundary(boundary: int) -> bytes:
         return DltsCommand.SetScanAxisHighBoundary(DltsCommand._X_AXIS, boundary)
@@ -205,7 +210,7 @@ class DltsCommand:
     @staticmethod
     def SetLatchUpTurnOffDelayMicroseconds(delay: int) -> bytes:
         return DltsCommand.SetDelay(DltsCommand._LATCH_UP_TURN_OFF_DELAY_MICRO, delay)
-    
+
     @staticmethod
     def SetLatchUpTurnOffDelayMilliseconds(delay: int) -> bytes:
         return DltsCommand.SetDelay(DltsCommand._LATCH_UP_TURN_OFF_DELAY_MILLI, delay)
@@ -226,6 +231,18 @@ class DltsCommand:
     def SetLaserPulseFrequency(frequency: int) -> bytes:
         return DltsCommand.SetLaserParameter(DltsCommand._PULSE_FREQUENCY, frequency)
 
+    @staticmethod  # NEW
+    def SetLaserMinIntensity(value: int) -> bytes:
+        return DltsCommand.SetLaserParameter(DltsCommand._MIN_INTENSITY, value)  # NEW
+
+    @staticmethod  # NEW
+    def SetLaserMaxIntensity(value: int) -> bytes:
+        return DltsCommand.SetLaserParameter(DltsCommand._MAX_INTENSITY, value)  # NEW
+
+    @staticmethod  # NEW
+    def SetLaserIntensityStep(value: int) -> bytes:
+        return DltsCommand.SetScanAxisStepSize(DltsCommand._I_AXIS, value)  # NEW
+
     # get commands
 
     @staticmethod
@@ -233,23 +250,23 @@ class DltsCommand:
         return DltsCommand._encode("{0}{1}".format(DltsCommand._GET, getSubject))
 
     @staticmethod
-    def GetPosition(axis: str) -> bytes: 
+    def GetPosition(axis: str) -> bytes:
         return DltsCommand.GetUInt16("{0}{1}".format(DltsCommand._POSITION, axis))
 
     @staticmethod
-    def GetXPosition() -> bytes: 
+    def GetXPosition() -> bytes:
         return DltsCommand.GetPosition(DltsCommand._X_AXIS)
 
     @staticmethod
-    def GetYPosition() -> bytes: 
+    def GetYPosition() -> bytes:
         return DltsCommand.GetPosition(DltsCommand._Y_AXIS)
 
     @staticmethod
-    def GetZPosition() -> bytes: 
+    def GetZPosition() -> bytes:
         return DltsCommand.GetPosition(DltsCommand._Z_AXIS)
 
     @staticmethod
-    def GetXTilt() -> bytes: 
+    def GetXTilt() -> bytes:
         return DltsCommand.GetPosition(DltsCommand._TILT_AXIS)
 
     @staticmethod
@@ -340,7 +357,7 @@ class DltsFirmwareError(DltsException):
 
 class DltsConnection:
     """ Thread safe implementation of the DLTS-Protocol. Implementations have to provides a basic binary communication interface. """
-    
+
     def __init__(self):
         self._comLock = threading.RLock()
         self._acquired = False
@@ -349,18 +366,18 @@ class DltsConnection:
     def IsAcquired(self):
         """ Returns if the DLTS connection has been acquired by any thread. """
         return self._acquired
-    
+
     @property
     def IsAcquiredByMe(self):
         """ Returns if the DLTS Connection has been acquired by the calling thread. """
         acquired = self._comLock.acquire(False)
-        
+
         if acquired:
             acquired = self._acquired
             self._comLock.release()
-        
+
         return acquired
-    
+
     def _acquireForTemporaryUsage(self):
         """ Acquires the DLTS connection on a temporary base and raises an exception if it doesn't succeed. """
         if not self._comLock.acquire(False):
@@ -369,80 +386,80 @@ class DltsConnection:
     def _releaseFromTemporaryUsage(self):
         """ Releases the DLTS connection from temporary usage. """
         self._comLock.release()
-    
+
     def acquire(self, blocking: bool = False, timeout: float = -1):
         """ Acquires the DLTS connection by the calling thread. Multiple calls have no effect if already acquired. """
         acquired = self._comLock.acquire(blocking, timeout)
-        
+
         if acquired:
             if self._acquired:
                 self._comLock.release()
             else:
                 self._acquired = True
-                                  
+
         return acquired
-        
+
     def release(self):
         """ Releases the DLTS connection. """
         if self.IsAcquiredByMe:
             self._acquired = False
-        
+
         self._comLock.release()
-    
+
     def __enter__(self):
         """ Acquire the DLTS connection. """
         if not self.IsAcquiredByMe:
             self.acquire(True)
         return self
-        
+
     def __exit__(self, type, value, traceback):
         """ Release the DLTS connection. """
         self.release()
-    
+
     @property
     def IsOpen(self) -> bool:
         """ Returns if the DLTS is connected. """
         return self._IsOpenUnlocked
-    
+
     def close(self):
         """ Closes the DLTS connection. """
         self._closeUnlocked()
-        
+
     def write(self, data: bytes) -> int:
         """ Sends the given data to the connected DLTS. Acquires the DLTS connection. """
         self._acquireForTemporaryUsage()
-        
+
         try:
             return self._writeUnlocked(data)
         finally:
             self._releaseFromTemporaryUsage()
-            
+
     def read(self, size = 1, force = True) -> bytes:
         """ Reads the specified amount of data sent from the connected DLTS and returns it. Acquires the DLTS connection. If forced raises an exception on timeout.  """
         self._acquireForTemporaryUsage()
-        
+
         try:
             received = self._readUnlocked(size)
-            
+
             if force and len(received) < size:
                 raise DltsTimeoutError("Forced read expected {} bytes but received only {}".format(size, len(received)))
-            
+
             return received
         finally:
             self._releaseFromTemporaryUsage()
 
     def readUntil(self, terminator: bytes = b"\n", size: int = None, force = True) -> bytes:
         """ Reads data sent from the connected DLTS until the given termination sequence occurs or the given size has been reached and returns it. If forced raises an exception on timeout.
-        
+
         Warning
         -------
         If the underlying implementation has no timeout configured this method may block forever.
         """
         self._acquireForTemporaryUsage()
-        
+
         try:
             received = bytearray()
-        
+
             while not received.endswith(terminator) and (size is None or size < len(received)):
                 receivedByte = self._readUnlocked(1)
 
@@ -450,14 +467,14 @@ class DltsConnection:
                     raise DltsTimeoutError("Forced read until ran into timeout before terminator of maximum size had been reached.")
 
                 received.append(int.from_bytes(receivedByte, DltsConstants.DLTS_INT_BYTE_ORDER))
-    
+
             return bytes(received)
         finally:
             self._releaseFromTemporaryUsage()
 
     def readAll(self) -> bytes:
-        """ Reads all available data sent from the connected DLTS. 
-        
+        """ Reads all available data sent from the connected DLTS.
+
         Warning
         -------
         If the underlying implementation has no timeout configured this method may block forever. """
@@ -468,14 +485,14 @@ class DltsConnection:
         finally:
             self._releaseFromTemporaryUsage()
 
-    def command(self, command: bytes, expectedResponseHeader: str = DltsConstants.DLTS_RESPONSE_ACKNOWLEDGE, responseDataSize = 0) -> bytes:      
+    def command(self, command: bytes, expectedResponseHeader: str = DltsConstants.DLTS_RESPONSE_ACKNOWLEDGE, responseDataSize = 0) -> bytes:
         """ Sends the given command to the connected DLTS and awaits the specified response. Reads additional data afterwards and returns it if specified. """
         self._acquireForTemporaryUsage()
         print ( command )	#for debugging serial communication
-        
-        try:           
+
+        try:
             data = None
-            
+
             self.write(command)
 
             header = self.read(DltsConstants.DLTS_RESPONSE_HEADER_LENGTH).decode(DltsConstants.DLTS_STRING_ENCODING)
@@ -500,12 +517,12 @@ class DltsConnection:
             return data
         finally:
             self._releaseFromTemporaryUsage()
-    
+
     def commandSkipUntilResponse(self, command: bytes, expectedResponseHeader: str = DltsConstants.DLTS_RESPONSE_ACKNOWLEDGE):
         """ Sends the given command to the connected DLTS and skips all incoming data until the specified response has been received. """
         self._acquireForTemporaryUsage()
-        
-        try:           
+
+        try:
             self.write(command)
             self.readUntil(expectedResponseHeader.encode(DltsConstants.DLTS_STRING_ENCODING))
         finally:
@@ -533,17 +550,14 @@ class DltsConnection:
 
     def commandWithAcknowledge(self, command: bytes):
         """ Sends a command to the connected DLTS which is expected to get acknowledged. """
-        cprint('\ncommandWithAcknowledge', 'debug_g')
         self.command(command, DltsConstants.DLTS_RESPONSE_ACKNOWLEDGE, 0)
 
     def commandScanStart(self, command: bytes):
         """ Sends a scan start command to the connected DLTS. """
-        cprint('\ncommandScanStart', 'debug_g')
         self.command(command, DltsConstants.DLTS_RESPONSE_DATA, 0)
 
     def commandDataRetrieval(self, command: bytes, dataSize: int) -> bytes:
         """ Sends a command to the connected DLTS which is expected to be responded with byte data of the specified length. Returns the received data. """
-        cprint('\ncommandDataRetrieval', 'debug_g')
         return self.command(command, DltsConstants.DLTS_RESPONSE_DATA, dataSize)
 
 
@@ -551,19 +565,19 @@ class DltsConnection:
     @property
     def _IsOpenUnlocked(self) -> bool:
         raise NotImplementedError
-    
+
     def _closeUnlocked(self):
         raise NotImplementedError
-    
+
     def _writeUnlocked(self, data: bytes) -> int:
         raise NotImplementedError
-    
+
     def _readUnlocked(self, size = 1) -> bytes:
         raise NotImplementedError
-    
+
     def _readAllUnlocked(self) -> bytes:
         raise NotImplementedError
-         
+
 class ScanDataException(DltsException):
     """ Base exception for all failures during scan data processing. """
     pass
@@ -590,8 +604,8 @@ class INamed:
     """ Any object which should posses a name. Mostly for displaying purposes. """
 
     def getName(self) -> str:
-        """ Optional name which describes this instance. """ 
-        return self.__class__.__name__ 
+        """ Optional name which describes this instance. """
+        return self.__class__.__name__
 
 class IScanImage(INamed):
     """ Data image which contains native scan data in a `numpy.ndarray`. """
@@ -601,17 +615,17 @@ class IScanImage(INamed):
         raise NotImplementedError
 
     def getSize(self) -> Tuple[int, int]:
-        """ Returns the occupied real world space of the stored data image. first value -> space in row direction (2nd image dimension), 
+        """ Returns the occupied real world space of the stored data image. first value -> space in row direction (2nd image dimension),
         second value -> space in column direction (1st image dimension) """
         raise NotImplementedError
-    
+
     def getPosition(self) -> Tuple[int, int]:
-        """ Returns the position from where the stored data image starts spanning. (top-left corner) first value -> start point in row direction (2nd image dimension), 
+        """ Returns the position from where the stored data image starts spanning. (top-left corner) first value -> start point in row direction (2nd image dimension),
         second value -> start point in column direction (1st image dimension) """
         raise NotImplementedError
 
     def getDataPointSize(self) -> Tuple[int, int]:
-        """ Returns the occupied real world space of each data point/pixel of the data image. first value -> occupied space in row direction (2nd image dimension), 
+        """ Returns the occupied real world space of each data point/pixel of the data image. first value -> occupied space in row direction (2nd image dimension),
         second value -> occupied space in column direction (1st image dimension)"""
         return (int(self.getSize()[0] / self.getResolution()[0]), int(self.getSize()[1] / self.getResolution()[1]))
 
@@ -641,7 +655,7 @@ class IScanImage(INamed):
 
     def getCompletion(self) -> float:
         """ Returns the completion percentage of the image. (0.0 to 1.0)"""
-        return self.getDataPointsCount() / self.getDataPointsCapacity() 
+        return self.getDataPointsCount() / self.getDataPointsCapacity()
 
     def isCompleted(self) -> bool:
         """ Returns if the data image's data point capacity has been completely filled up or not. """
@@ -671,9 +685,18 @@ class ScanImage(IScanImage):
     """ Single value to be filled as default value into the image array. Redefine in subclasses for changes. """
     _IMAGE_ARRAY_DEFAULT_VALUE = 0
 
-    def __init__(self, dataPoints: Iterable[IScanDataPoint], position: Tuple[int, int], size: Tuple[int, int], resolution: Tuple[int, int], 
-        laserIntensity: int, zPosition: int, xTilt: int, scanDate: datetime.datetime, scanDuration: datetime.timedelta):
-        
+    def __init__(self,
+                 dataPoints: Iterable[IScanDataPoint],
+                 position: Tuple[int, int],
+                 size: Tuple[int, int],
+                 resolution: Tuple[int, int],
+                 laserIntensity: int,
+                 zPosition: int,
+                 xTilt: int,
+                 scanDate: datetime.datetime,
+                 scanDuration: datetime.timedelta,
+                 intensity_multiplier=1):
+
         self._dataPointsCount = len(dataPoints)
         self._position = position
         self._size = size
@@ -683,6 +706,7 @@ class ScanImage(IScanImage):
         self._xTilt = xTilt
         self._scanDate = scanDate
         self._scanDuration = scanDuration
+        self._intensity_multiplier = intensity_multiplier
 
         self._imageArray = self._createImageArray(tuple(dataPoints))
 
@@ -700,7 +724,7 @@ class ScanImage(IScanImage):
 
     def getPosition(self) -> Tuple[int, int]:
         return self._position
-    
+
     def getLaserIntensity(self) -> int:
         return self._laserIntensity
 
@@ -730,15 +754,28 @@ class ScanImage(IScanImage):
         if dataPoints:
             slices = np.frompyfunc(self.convertDataPoint, 1, self._IMAGE_ARRAY_DATA_DEPTH)(dataPoints)
             imageView = imageArray.view()
-            
+
             if self._IMAGE_ARRAY_DATA_DEPTH > 1:
                 imageView.shape = (np.prod(reversedResolution), self._IMAGE_ARRAY_DATA_DEPTH)
-                
+
                 for i in range(self._IMAGE_ARRAY_DATA_DEPTH):
                     imageView[:slices[i].size, i] = slices[i]
             else:
                 imageView.shape = np.prod(reversedResolution)
-                imageView[:slices.size] = slices
+
+                # HERE HERE
+                if self._intensity_multiplier > 1:
+
+                    slices_use = []
+                    for index in range(math.ceil(len(slices) / self._intensity_multiplier)):
+                        low_range = (index*self._intensity_multiplier)
+                        temp_slices_use = slices[low_range: low_range + self._intensity_multiplier]
+                        slices_use.append(self.detect_latchup_condition(temp_slices_use))  # TEST
+                        #slices_use.append(self.temp_slices_use) #Pavan to test
+
+                    imageView[:len(slices_use)] = slices_use
+                else:
+                    imageView[:slices.size] = slices
 
         return imageArray
 
@@ -747,7 +784,11 @@ class ScanImage(IScanImage):
         raise NotImplementedError
 
 class ScanAreaConfig:
-    """ Immutable container of scan area and delay parameters (min/max/delay/stepsize of x/y). """
+    """
+        Immutable container of scan area and delay parameters (min/max/delay/stepsize of x/y).
+        Modified for multi intensity  # TEST  # NEW
+    """
+
 
     @staticmethod
     def createPointAreaScanAreaConfig(xPosition: int, yPosition: int):
@@ -761,11 +802,20 @@ class ScanAreaConfig:
     def createYLineAreaScanAreaConfig(xPosition: int, yBounds: Tuple[int, int], stepSize: int, stepDelay_ms: int):
         return ScanAreaConfig((xPosition, xPosition), yBounds, (1, stepSize), (0, stepDelay_ms))
 
-    def __init__(self, xBounds: Tuple[int, int], yBounds: Tuple[int, int], stepSize: Tuple[int, int], delayTime_ms: Tuple[int, int]):
+    def __init__(self,
+                 xBounds: Tuple[int, int],
+                 yBounds: Tuple[int, int],
+                 stepSize: Tuple[int, int],
+                 delayTime_ms: Tuple[int, int],
+                 intensity_multiplier=None,  # TEST
+                 ):
+
         self._bounds: Tuple[Tuple[int, int], Tuple[int, int]] = (xBounds, yBounds)
-        self._stepSize: Tuple[int, int] = stepSize 
+        self._stepSize: Tuple[int, int] = stepSize
         self._stepDelay_ms: Tuple[int, int] = delayTime_ms
 
+        self._intensity_multiplier = 1 if intensity_multiplier is None else intensity_multiplier  # TEST
+        
     @property
     def XBounds(self) -> Tuple[int, int]:
         """ Max and min x values. """
@@ -847,22 +897,34 @@ class ScanAreaConfig:
     @property
     def ScanPositionsCount(self) -> int:
         """ The total number of scan points covered by this area configuration. """
-        return self.ScanPositionsCountInX * self.ScanPositionsCountInY
+        return (self.ScanPositionsCountInX * self.ScanPositionsCountInY * self._intensity_multiplier) - \
+               (self._intensity_multiplier - 1)  # TEST hardware weirdness
 
     @property
     def ScanPositionsCountInX(self) -> int:
         """ The total number of scan points in x direction. """
-        return math.ceil((self.XBoundsHigh - self.XBoundsLow) / self.XStepSize) + 1
+        # return math.ceil((self.XBoundsHigh - self.XBoundsLow) / self.XStepSize) + 1
+        return math.floor((self.XBoundsHigh - self.XBoundsLow) / self.XStepSize) + 1  # TEST FIX
 
     @property
     def ScanPositionsCountInY(self) -> int:
         """ The total number of scan points in y direction. """
-        return math.ceil((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1
+        # return math.ceil((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1
+        return math.floor((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1  # TEST FIX
+
+    @property  # NEW
+    def ScanPositionsCountInI(self) -> int:  # TEST
+        """ The total number of scan points in y direction. """
+        return math.floor((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1
 
     @property
     def ScanResolution(self) -> Tuple[int, int]:
         """ The total number of scan points in x and y direction. """
         return (self.ScanPositionsCountInX, self.ScanPositionsCountInY)
+
+    @property
+    def IntensityMultiplier(self):  # TEST  # NEW
+        return self._intensity_multiplier
 
     @property
     def ScanImageSize(self) -> Tuple[int, int]:
@@ -916,7 +978,7 @@ class IScan(INamed):
     def isFinished(self) -> bool:
         """ Returns if the scan has finished no matter how (Even aborted means finished). """
         raise NotImplementedError
-    
+
     def isCompleted(self) -> bool:
         """ Returns if the scan has acquired all possible data points. """
         return self.isFinished() and self.getScannedPointsCount() >= self.getScanPointsCount()
@@ -973,10 +1035,10 @@ class IPausableScan(IScan):
         raise NotImplementedError
 
 class Scan(IScan):
-    """ Scan implementation which uses a additional threads and is based on custom commands. 
-    
+    """ Scan implementation which uses a additional threads and is based on custom commands.
+
     The standard scan class provides a basic implemenation of the scan behaviour and uses a additional threads to communicate with the DLTS
-    and create acquired scan images. Inheriting from this class requires an implementation of at least one custom `ScanImage` class. 
+    and create acquired scan images. Inheriting from this class requires an implementation of at least one custom `ScanImage` class.
     Furthermore the commanding of the DLTS to start and abort the scan and to receive a data point have to be implemented.
 
     Parameters
@@ -990,7 +1052,7 @@ class Scan(IScan):
     zPosition: `int` (default: `None`)
         The z position during scanning. If `None` it is ignored.
     laserIntensity: `int` (default: `None`)
-        The laser intensity during scanning. If `None` it is ignored.    
+        The laser intensity during scanning. If `None` it is ignored.
     """
 
     """ Interval in which the scan images creation creates the scan's scan images. """
@@ -1003,14 +1065,21 @@ class Scan(IScan):
             xTilt: int = None,
             zPosition: int = None,
             laserIntensity: int = None,
-            autoFocus=None):
+            autoFocus=None,  # NEW
+            laserMinIntensity=None,
+            laserMaxIntensity=None,# NEW
+            laserStepIntensity=None,  # NEW
+    ):
 
         self._configuration = config
         self._positioningTime_ms = positioningTime_ms
         self._xTilt = xTilt
         self._zPosition = zPosition
         self._laserIntensity = laserIntensity
-        self._autoFocus = autoFocus
+        self._autoFocus = autoFocus  # NEW
+        self._laserMinIntensity = laserMinIntensity
+        self._laserMaxIntensity = laserMaxIntensity        # NEW
+        self._laserStepIntensity = laserStepIntensity  # NEW
 
         self._dltsConnection = None
 
@@ -1023,7 +1092,7 @@ class Scan(IScan):
         self._scanFinished = False
         self._abortRequested = False
         self._scanningForDataPoints = False
-        
+
         self._dataPointsLock = threading.Lock()
         self._scanImagesLock = threading.Lock()
 
@@ -1034,7 +1103,7 @@ class Scan(IScan):
     def getAreaConfig(self) -> ScanAreaConfig:
         """ Returns the scan area configuration of the scan. """
         return self._configuration
-  
+
     def getPositioningTime_ms(self) -> int:
         """ Returns the optional positioning time of the scan. """
         return self._positioningTime_ms
@@ -1060,13 +1129,13 @@ class Scan(IScan):
         with self._dataPointsLock:
             length = len(self._dataPoints)
         return length
-    
+
     def isRunning(self) -> bool:
         return self._scanThread.is_alive()
 
     def isAborted(self) -> bool:
         return self.isFinished() and self._abortRequested
-    
+
     def isFinished(self) -> bool:
         return self._scanFinished and not self._scanThread.is_alive()
 
@@ -1082,6 +1151,7 @@ class Scan(IScan):
         return scanImages
 
     def getScanPointsCount(self) -> int:
+        ret_val = self._configuration.ScanPositionsCount
         return self._configuration.ScanPositionsCount
 
     def start(self, dltsConnection: DltsConnection):
@@ -1096,11 +1166,12 @@ class Scan(IScan):
 
     def _scanThreadTarget(self):
         """ Target method of the scan thread which manages communication and acquires data points. """
-        
+
+
         self._startTime = datetime.datetime.now()
 
         with self._dltsConnection as dltsConnection:
-            
+
             cachedXTilt = None
             cachedZPosition = None
             cachedLaserIntensity = None
@@ -1128,6 +1199,24 @@ class Scan(IScan):
 
                 time.sleep(self._positioningTime_ms / 1000)
 
+                if self._laserMinIntensity is not None:  # NEW
+                    from dltscontrol.color_print import cprint
+                    cprint(f'    _laserMinIntensity', 'debug_w')
+                    if hasattr(self, 'setScanLaserMinIntensity'):
+                        self.setScanLaserMinIntensity(dltsConnection, self._laserMinIntensity)
+
+                if self._laserMaxIntensity is not None:  # NEW
+                    from dltscontrol.color_print import cprint
+                    cprint(f'    _laserMaxIntensity', 'debug_w')
+                    if hasattr(self, 'setScanLaserMaxIntensity'):
+                        self.setScanLaserMaxIntensity(dltsConnection, self._laserMaxIntensity)
+
+                if self._laserStepIntensity is not None:  # NEW
+                    from dltscontrol.color_print import cprint
+                    cprint(f'    _laserStepIntensity', 'debug_w')
+                    if hasattr(self, 'setScanLaserStepIntensity'):
+                        self.setScanLaserStepIntensity(dltsConnection, self._laserStepIntensity)
+
                 if self._autoFocus:  # NEW
                     from dltscontrol.color_print import cprint
                     if hasattr(self, 'setAutoFocus'):
@@ -1138,6 +1227,11 @@ class Scan(IScan):
                         if extra_data:
                             cprint(f'extra_data = {extra_data}', 'debug_r')
 
+
+                from dltscontrol.color_print import cprint
+                cprint(f'TEST SCAN', 'debug_b')
+                # time.sleep(100)
+
                 self.onScanStart(dltsConnection)
 
                 self._scanningForDataPoints = True
@@ -1146,7 +1240,81 @@ class Scan(IScan):
                 self._scanImagesCreationThread.start()
 
                 while self._scanningForDataPoints:
-                    
+                    # NOTE. Limits are not actual limits.
+                    # more like, once we reach this number, this is the last test
+                    # math.ceil((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1
+                    # math.ceil((self.XBoundsHigh - self.XBoundsLow) / self.XStepSize) + 1
+
+                    # multi intensity USE DATA
+                    # Please do not edit..
+
+                    # 2000: 2400: 10
+                    # 2000: 2400: 10
+                    # 2400: 3300: 20
+
+
+
+                    # do you remember the position where we can get the latchup image..
+                    # basically, the data that was here previously..
+                    # cause, currently, were not getting anything..
+                    #yes, I will run the scan this time.
+
+                    # oh..!! it seems like we got something..!!
+                    # but why is it black and white previously..?
+                    # nevermind..
+                    # now,we just need the position where a latchup actually occurs..^^
+                    #yes, just a min
+
+
+
+                    # Pelase wait.. im thinking.. this is really complicated for pythin..
+                    # Suee, but what are you doing now ??
+                    # thinking how to detect which plane point data are relevant, how to combine them into a singe list,
+                    #process that list, the nsend it as an image data..
+
+
+                    #then you are trying to do in python itself.
+                    #yes.. because now, the data will be like this
+
+                    #(0, 0) = data length is any where betweem 0 and length of the step of laser intensity..
+                    # lem(0, 0) = 2
+                    # lem(0, 1) = 2
+                    # lem(0, 2) = 20
+                    # lem(1, 0) = 90
+                    # lem(1, 1) = 22
+                    # lem(1, 2) = 4
+                    # lem(2, 0) = 1
+                    # lem(2, 1) = 1
+                    # lem(2, 2) = 1
+
+                    # so now, i have to group the points into their relevant positions befpre processing the data..
+                    # and this is during runtime
+
+                    # previously, we only had a fixed data length so it's easy..
+
+                    # lem(0, 0) = # of steps
+                    # lem(0, 1) = # of steps
+                    # lem(0, 2) = # of steps
+                    # lem(1, 0) = # of steps
+                    # lem(1, 1) = # of steps
+                    # lem(1, 2) = # of steps
+                    # lem(2, 0) = # of steps
+                    # lem(2, 1) = # of steps
+                    # lem(2, 2) = # of steps
+
+
+                    # so, yeah.. that's what im thinking of..
+                    #Ok nice. Please try , if not just get the intensitiy data and do pillow module. that would be fine for now.
+
+                    #But keep trying. thanks
+                    # i assume we will get to the pillow thing in 2-3 weeks..
+                    # there have been significant changes to the c code and we have to make sure that the python code is up to date wit hthe API
+                    # We can just rever the C code as in the last week and get intensity data.
+                    # yes we can.. well actually, that's even more dangerous since we dont have the change log..
+                    # we dont know which parts of the c code have been changed..
+                    # best #thing to do is just use this current C code and slowly make python adadpt/.
+                    #ok got you but , I have the previous codes of C and python. I zipped it.
+
                     dataPoint = self.onReceiveDataPoint(dltsConnection)
 
                     with self._dataPointsLock:
@@ -1155,7 +1323,10 @@ class Scan(IScan):
                     if self._abortRequested:
                         self.onScanAbort(dltsConnection)
 
+                    cprint(f'{self.getScannedPointsCount()} of {self.getScanPointsCount()}', 'debug_w')
+
                     if self._abortRequested or self.getScannedPointsCount() >= self.getScanPointsCount():
+                        cprint(f'STOP', 'debug_g')
                         self._scanningForDataPoints = False
 
             except Exception as ex:
@@ -1170,7 +1341,7 @@ class Scan(IScan):
                     if cachedZPosition is not None:
                         dltsConnection.commandSet(DltsCommand.SetZPosition(cachedZPosition))
                     if cachedLaserIntensity is not None:
-                        dltsConnection.commandSet(DltsCommand.SetLaserIntensity(cachedLaserIntensity))    
+                        dltsConnection.commandSet(DltsCommand.SetLaserIntensity(cachedLaserIntensity))
                 except Exception as ex:
                     logger.exception("Scan could not reset optional scan parameters. Reason: %s", ex)
 
@@ -1180,14 +1351,14 @@ class Scan(IScan):
 
         self._finishTime = datetime.datetime.now()
         self._scanFinished = True
-        
+
     def _scanImagesCreationThreadTarget(self):
         """ Target of scan images creation thread. """
         try:
             scanImagesDirty = True
 
             while scanImagesDirty:
-                
+
                 scanImagesDirty = self._scanningForDataPoints
 
                 # avoid two acquired locks at the same time to eliminate any deadlock risk
@@ -1199,7 +1370,7 @@ class Scan(IScan):
                 time.sleep(self._SCAN_IMAGES_CREATION_INTERVAL_S)
         except Exception as ex:
             logger.exception("Scan images creation has failed. Reason: %s", ex)
-        
+
     def createScanImages(self, dataPoints: Tuple[IScanDataPoint]) -> Sequence[IScanImage]:
         """ Creates the scan's scan images from the current scan's data points. Gets called from the scan images creation thread. """
         print("in createScanImages")
@@ -1216,13 +1387,13 @@ class Scan(IScan):
     def onReceiveDataPoint(self, dltsConnection: DltsConnection) -> IScanDataPoint:
         """ Called when the scan shall receive and return a single scan data point. Make sure to send the necessary commands to the DLTS. Gets called from the scan thread.  """
         raise NotImplementedError
-   
+
 class DltsControlFlowError(DltsException):
     pass
 
 class Dlts:
-    """ High level DLTS interface. Keeps track of running and finished scans. 
-    
+    """ High level DLTS interface. Keeps track of running and finished scans.
+
     Parameters
     ----------
     dltsConnection: `DltsConnection`
@@ -1234,7 +1405,7 @@ class Dlts:
         self._dltsConnection: DltsConnection = dltsConnection
         self._scan: IScan = None
         self._scanHistory = deque([], scanHistorySize)
-    
+
     @property
     def IsConnected(self):
         """ Whether the DLTS connection is open or not. """
@@ -1249,7 +1420,7 @@ class Dlts:
     def DltsConnection(self, connection: DltsConnection):
         if self.IsConnected and self.IsScanRunning:
             raise DltsControlFlowError("A connection change can't be executed during a running scan.")
-            
+
         self._dltsConnection = connection
 
     @property
@@ -1271,7 +1442,7 @@ class Dlts:
     def IsScanRunning(self) -> bool:
         """ If the most recent started scan is still running. """
         return self._scan is not None and self._scan.isRunning()
-    
+
     @property
     def ScanHistory(self) -> Sequence[IScan]:
         """ The LIFO scan history of finished scans. """
@@ -1288,7 +1459,7 @@ class Dlts:
     def setY(self, y: int):
         """ Sets the y position of the connected DLTS. """
         self._DltsConnection.commandSet(DltsCommand.SetYPosition(y))
-    
+
     def getY(self):
         """ Returns the y position of the connected DLTS. """
         return self._DltsConnection.commandGetUInt16(DltsCommand.GetYPosition())
@@ -1316,7 +1487,7 @@ class Dlts:
 
         #workaround
         value = -1
-        
+
         with self._DltsConnection as dltsConnection:
             x, y = self.getX(), self.getY()
 
@@ -1327,7 +1498,7 @@ class Dlts:
 
             self.setX(x)
             self.setY(y)
-        
+
         return value
 
     def setLaserIntensity(self, intensity: int):
@@ -1341,7 +1512,7 @@ class Dlts:
     def setLaserPulseIntensity(self, intensity: int):
         """ Sets the laser pulse intensity of the connected DLTS. """
         self._DltsConnection.commandSet(DltsCommand.SetLaserPulseIntensity(intensity))
-    
+
     def getLaserPulseIntensity(self) -> int:
         """ Returns the laser pulse intensity of the connected DLTS. """
         return self._DltsConnection.commandGetUInt16(DltsCommand.GetLaserPulseIntensity())
@@ -1349,7 +1520,7 @@ class Dlts:
     def setLaserPulseFrequency(self, frequency: int):
         """ Sets the laser pulse frequency of the connected DLTS. """
         self._DltsConnection.commandSet(DltsCommand.SetLaserPulseFrequency(frequency))
-    
+
     def getLaserPulseFrequency(self) -> int:
         """ Returns the laser pulse frequency of the connected DLTS. """
         return self._DltsConnection.commandGetUInt16(DltsCommand.GetLaserPulseFrequency())
@@ -1393,13 +1564,13 @@ class ByteStreamBasedDltsConnection(DltsConnection):
     @property
     def _IsOpenUnlocked(self) -> bool:
         return not self._byteStream.closed
-    
+
     def _closeUnlocked(self):
         self._byteStream.close()
-    
+
     def _writeUnlocked(self, data: bytes) -> int:
         return self._byteStream.write(data)
-    
+
     def _readUnlocked(self, size = 1) -> bytes:
         return self._byteStream.read(size)
 

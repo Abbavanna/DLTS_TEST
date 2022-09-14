@@ -184,7 +184,7 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         autofocusHeading = ttk.Label(autofocusFrame, text="FOCUS PARAMETERS", justify=tk.LEFT)
         autofocusLowerFrame = ttk.Frame(autofocusFrame)
 
-        autofocusButton = ttk.Button(autofocusLowerFrame, text="AUTO FOCUS", command=self.setAutoFocus, width=15) #AFP
+        autofocusButton = ttk.Button(autofocusLowerFrame, text="AUTO FOCUS", command=lambda: self.setAutoFocus(), width=15) #AFP
 
         laserPulseIntensityLabel = ttk.Label(laserPulseLowerFrame, text = "Intensity")
         laserPulseIntensityEntry = tkext.IntEntry(laserPulseLowerFrame, textvariable = self._laserPulseIntensityVariable, width = self._DEFAULT_ENTRY_WIDTH)
@@ -279,14 +279,18 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         if dlts is not None:
             dlts.fireLaserPulse(self._laserPulseIntensityVariable.get(), self._laserPulseFrequencyVariable.get())
 
-    def setAutoFocus(self, dltsConnection: DltsConnection):  # NEW
+    def setAutoFocus(self):  # NEW
         # send an autofocus command to the DLTS
+
+        dltsConnection = self.getDlts().DltsConnection
+        from dltscontrol.color_print import cprint
+        cprint(f'TEST', 'debug_p')
+
         dltsConnection.commandDataRetrieval(
             DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)  # AFP
 
-        if self._autoFocus:
-              self.setAutoFocus(dltsConnection)
-              extra_data = dltsConnection.readAll()
+
+
 
 
     def _checkLaserReflectionUpdateTask(self):

@@ -40,7 +40,7 @@ from dltscontrol.app.scanningconfigurables import ConfigurableStandardScanCreati
 class MIScanConstants:
 
     #Pavan Possibility , if latchup happens data point is 8 bytes, else data point is 2 .
-    DATA_POINT_BYTE_COUNT = 8
+    DATA_POINT_BYTE_COUNT = 12
     SCAN_START_COMMAND = str.encode("asn")
 
 
@@ -65,7 +65,7 @@ class IMIScanDataPoint(IScanDataPoint):
 class MILatchupImage(ScanImage):
     """ A scan image which consists of the latchup current values of `ILatchupScanDataPoint`s. """
 
-    _NAME = "Latch-Up Current Image "
+    _NAME = "Latch-Up Current Image"
 
     def __init__(self,
                  dataPoints,
@@ -85,20 +85,24 @@ class MILatchupImage(ScanImage):
         return self._NAME
 
     def convertDataPoint(self, dataPoint: IMIScanDataPoint):
+        from dltscontrol.color_print import cprint
+        # retval = dataPoint.getLatchUpCurrent()
+        # test_value = dataPoint.debug_get_all_as_list()  # TEST ONLY
+        # cprint(f'get_all = {test_value}', 'debug_p')
         return dataPoint.getLatchUpCurrent()
 
     @staticmethod
     def detect_latchup_condition(data):
         # TODO: test latchup condition here
         #  ( current > 13 ma or voltage < 100)
-        temp_return_value = [test for test in data if test > 0]  # TEST ONLY
-        data_len = len(temp_return_value) if len(temp_return_value) > 0 else 1
-        return_value = int(sum(temp_return_value) / data_len)  # TEST ONLY
-        return return_value
+        # temp_return_value = [test for test in data if test > 13]  # TEST ONLY
+        # data_len = len(temp_return_value) if len(temp_return_value) > 0 else 1
+        # return_value = int(sum(temp_return_value) / data_len)  # TEST ONLY
+        #
+        # return return_value
 
-    # @staticmethod
-    # def detect_latchup_condition(data):
-    #     return int(sum(data) / len(data))  # TEST
+        return int(sum(data) / len(data))  # TEST ONLY
+
 
 
 class MILaserImage(ScanImage):
@@ -189,14 +193,14 @@ class MIVoltageImage(ScanImage):
     def detect_latchup_condition(data):
         # TODO: test latchup condition here
         #  ( current > 13 ma or voltage < 100)
-        temp_return_value = [test for test in data if test < 600]  # TEST ONLY #Pavan change 1000 to 100
-        data_len = len(temp_return_value) if len(temp_return_value) > 0 else 1
-        return_value = int(sum(temp_return_value) / data_len)  # TEST ONLY
-        return return_value
+        # temp_return_value = [test for test in data if test < 100]  # TEST ONLY
+        # data_len = len(temp_return_value) if len(temp_return_value) > 0 else 1
+        # return_value = int(sum(temp_return_value) / data_len)  # TEST ONLY
+        # return return_value
 
-    # @staticmethod
-    # def detect_latchup_condition(data):
-    #     return int(sum(data) / len(data))  # TEST
+        return int(sum(data) / len(data))  # TEST ONLY
+
+
 
 
 
@@ -207,19 +211,22 @@ class MIScanDataPoint(ScanDataPoint, IMIScanDataPoint):  # THIS
     def __init__(self, rawData):
         super().__init__(rawData)
 
-    def getLatchUpVoltage(self):
-        return int.from_bytes(self.RawData[-2:],
-                              DltsConstants.DLTS_INT_BYTE_ORDER)  # selecting array elements in python: [start:stop:step length]#negative values are used as [array length - value]
-
-    def getLatchUpCurrent(self):
-        return int.from_bytes(self.RawData[-4:-2], DltsConstants.DLTS_INT_BYTE_ORDER)
+    def getReflectionValue(self):
+        return int.from_bytes(self.RawData[-8:-6], DltsConstants.DLTS_INT_BYTE_ORDER)
 
     def getLaserValue(self):  # TEST  # NEW
         return int.from_bytes(self.RawData[-6:-4], DltsConstants.DLTS_INT_BYTE_ORDER)
 
-    def getReflectionValue(self):
-        return int.from_bytes(self.RawData[-8:-6], DltsConstants.DLTS_INT_BYTE_ORDER)
+    def getLatchUpCurrent(self):
+        return int.from_bytes(self.RawData[-4:-2], DltsConstants.DLTS_INT_BYTE_ORDER)
 
+    def getLatchUpVoltage(self):
+        # selecting array elements in python: [start:stop:step length]#negative values are used as [array length - value]
+        return int.from_bytes(self.RawData[-2:], DltsConstants.DLTS_INT_BYTE_ORDER)
+
+
+    def debug_get_all_as_list(self):
+        return list(self.RawData)
 
 
 class MIScan(Scan):

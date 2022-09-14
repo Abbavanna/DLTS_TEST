@@ -493,22 +493,27 @@ class DltsConnection:
         try:
             data = None
 
+
+
             self.write(command)
 
             header = self.read(DltsConstants.DLTS_RESPONSE_HEADER_LENGTH).decode(DltsConstants.DLTS_STRING_ENCODING)
 
             if header != expectedResponseHeader:
-                commandString = command[:DltsConstants.DLTS_COMMAND_HEADER_LENGTH].decode(DltsConstants.DLTS_STRING_ENCODING)
+                try:
+                    commandString = command[:DltsConstants.DLTS_COMMAND_HEADER_LENGTH].decode(DltsConstants.DLTS_STRING_ENCODING)
 
-                if header == DltsConstants.DLTS_RESPONSE_ERROR:
-                    error = self.readUntil(DltsConstants.DLTS_LINE_TERMINATOR)
-                    raise DltsFirmwareError("Dlts responded with error '{}' to command '{}'.".format(error, commandString))
-                else:
-                    # unknown response, clear input buffer to avoid further unexpected behaviour
-                    self.readAll()
+                    if header == DltsConstants.DLTS_RESPONSE_ERROR:
+                        error = self.readUntil(DltsConstants.DLTS_LINE_TERMINATOR)
+                        raise DltsFirmwareError("Dlts responded with error '{}' to command '{}'.".format(error, commandString))
+                    else:
+                        # unknown response, clear input buffer to avoid further unexpected behaviour
+                        self.readAll()
 
-                    raise DltsProtocolError("Dlts responded with '{}' to command '{}' but '{}' was expected."
-                        .format(header, commandString, expectedResponseHeader))
+                        raise DltsProtocolError("Dlts responded with '{}' to command '{}' but '{}' was expected."
+                            .format(header, commandString, expectedResponseHeader))
+                except Exception as e:
+                    cprint(f' DATA UNREAD = {command[:DltsConstants.DLTS_COMMAND_HEADER_LENGTH]}', 'debug_r')
             elif responseDataSize:
                 data = self.read(responseDataSize)
 
@@ -771,7 +776,7 @@ class ScanImage(IScanImage):
                         low_range = (index*self._intensity_multiplier)
                         temp_slices_use = slices[low_range: low_range + self._intensity_multiplier]
                         slices_use.append(self.detect_latchup_condition(temp_slices_use))  # TEST
-                        #slices_use.append(self.temp_slices_use) #Pavan to test
+                       # slices_use.append(temp_slices_use) #Pavan to test
 
                     imageView[:len(slices_use)] = slices_use
                 else:
@@ -897,8 +902,12 @@ class ScanAreaConfig:
     @property
     def ScanPositionsCount(self) -> int:
         """ The total number of scan points covered by this area configuration. """
-        return (self.ScanPositionsCountInX * self.ScanPositionsCountInY * self._intensity_multiplier) - \
-               (self._intensity_multiplier - 1)  # TEST hardware weirdness
+        # return (self.ScanPositionsCountInX * self.ScanPositionsCountInY * self._intensity_multiplier) - \
+        #        (self._intensity_multiplier - 1)  # TEST hardware weirdness
+
+        return self.ScanPositionsCountInX * self.ScanPositionsCountInY * self._intensity_multiplier
+
+
 
     @property
     def ScanPositionsCountInX(self) -> int:
@@ -912,7 +921,8 @@ class ScanAreaConfig:
         # return math.ceil((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1
         return math.floor((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1  # TEST FIX
 
-    @property  # NEW
+
+    @property  # NEW  NOT USED (DO NOT USE)
     def ScanPositionsCountInI(self) -> int:  # TEST
         """ The total number of scan points in y direction. """
         return math.floor((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1
@@ -921,6 +931,8 @@ class ScanAreaConfig:
     def ScanResolution(self) -> Tuple[int, int]:
         """ The total number of scan points in x and y direction. """
         return (self.ScanPositionsCountInX, self.ScanPositionsCountInY)
+
+
 
     @property
     def IntensityMultiplier(self):  # TEST  # NEW

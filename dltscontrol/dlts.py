@@ -768,19 +768,19 @@ class ScanImage(IScanImage):
             else:
                 imageView.shape = np.prod(reversedResolution)
 
-                # HERE HERE
-                if self._intensity_multiplier > 1:
-
-                    slices_use = []
-                    for index in range(math.ceil(len(slices) / self._intensity_multiplier)):
-                        low_range = (index*self._intensity_multiplier)
-                        temp_slices_use = slices[low_range: low_range + self._intensity_multiplier]
-                        slices_use.append(self.detect_latchup_condition(temp_slices_use))  # TEST
-                       # slices_use.append(temp_slices_use) #Pavan to test
-
-                    imageView[:len(slices_use)] = slices_use
-                else:
-                    imageView[:slices.size] = slices
+                # Multi intensity multiplier disabled since xy data only yields one data point now
+                # if self._intensity_multiplier > 1:
+                #
+                #     slices_use = []
+                #     for index in range(math.ceil(len(slices) / self._intensity_multiplier)):
+                #         low_range = (index*self._intensity_multiplier)
+                #         temp_slices_use = slices[low_range: low_range + self._intensity_multiplier]
+                #         slices_use.append(self.detect_latchup_condition(temp_slices_use))  # TEST
+                #        # slices_use.append(temp_slices_use) #Pavan to test
+                #
+                #     imageView[:len(slices_use)] = slices_use
+                # else:
+                imageView[:slices.size] = slices
 
         return imageArray
 
@@ -905,7 +905,9 @@ class ScanAreaConfig:
         # return (self.ScanPositionsCountInX * self.ScanPositionsCountInY * self._intensity_multiplier) - \
         #        (self._intensity_multiplier - 1)  # TEST hardware weirdness
 
-        return self.ScanPositionsCountInX * self.ScanPositionsCountInY * self._intensity_multiplier
+        # return self.ScanPositionsCountInX * self.ScanPositionsCountInY * self._intensity_multiplier
+
+        return self.ScanPositionsCountInX * self.ScanPositionsCountInY
 
 
 

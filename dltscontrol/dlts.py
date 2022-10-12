@@ -1254,80 +1254,11 @@ class Scan(IScan):
                 self._scanImagesCreationThread.start()
 
                 while self._scanningForDataPoints:
-                    # NOTE. Limits are not actual limits.
-                    # more like, once we reach this number, this is the last test
-                    # math.ceil((self.YBoundsHigh - self.YBoundsLow) / self.YStepSize) + 1
-                    # math.ceil((self.XBoundsHigh - self.XBoundsLow) / self.XStepSize) + 1
-
-                    # multi intensity USE DATA
-                    # Please do not edit..
-
-                    # 2000: 2400: 10
-                    # 2000: 2400: 10
-                    # 2400: 3300: 20
 
 
 
-                    # do you remember the position where we can get the latchup image..
-                    # basically, the data that was here previously..
-                    # cause, currently, were not getting anything..
-                    #yes, I will run the scan this time.
-
-                    # oh..!! it seems like we got something..!!
-                    # but why is it black and white previously..?
-                    # nevermind..
-                    # now,we just need the position where a latchup actually occurs..^^
-                    #yes, just a min
 
 
-
-                    # Pelase wait.. im thinking.. this is really complicated for pythin..
-                    # Suee, but what are you doing now ??
-                    # thinking how to detect which plane point data are relevant, how to combine them into a singe list,
-                    #process that list, the nsend it as an image data..
-
-
-                    #then you are trying to do in python itself.
-                    #yes.. because now, the data will be like this
-
-                    #(0, 0) = data length is any where betweem 0 and length of the step of laser intensity..
-                    # lem(0, 0) = 2
-                    # lem(0, 1) = 2
-                    # lem(0, 2) = 20
-                    # lem(1, 0) = 90
-                    # lem(1, 1) = 22
-                    # lem(1, 2) = 4
-                    # lem(2, 0) = 1
-                    # lem(2, 1) = 1
-                    # lem(2, 2) = 1
-
-                    # so now, i have to group the points into their relevant positions befpre processing the data..
-                    # and this is during runtime
-
-                    # previously, we only had a fixed data length so it's easy..
-
-                    # lem(0, 0) = # of steps
-                    # lem(0, 1) = # of steps
-                    # lem(0, 2) = # of steps
-                    # lem(1, 0) = # of steps
-                    # lem(1, 1) = # of steps
-                    # lem(1, 2) = # of steps
-                    # lem(2, 0) = # of steps
-                    # lem(2, 1) = # of steps
-                    # lem(2, 2) = # of steps
-
-
-                    # so, yeah.. that's what im thinking of..
-                    #Ok nice. Please try , if not just get the intensitiy data and do pillow module. that would be fine for now.
-
-                    #But keep trying. thanks
-                    # i assume we will get to the pillow thing in 2-3 weeks..
-                    # there have been significant changes to the c code and we have to make sure that the python code is up to date wit hthe API
-                    # We can just rever the C code as in the last week and get intensity data.
-                    # yes we can.. well actually, that's even more dangerous since we dont have the change log..
-                    # we dont know which parts of the c code have been changed..
-                    # best #thing to do is just use this current C code and slowly make python adadpt/.
-                    #ok got you but , I have the previous codes of C and python. I zipped it.
 
                     dataPoint = self.onReceiveDataPoint(dltsConnection)
 

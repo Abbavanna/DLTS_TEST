@@ -29,7 +29,7 @@ class SerialDltsService(DltsService, IUserConfigComponent):
     _USER_CONFIG_BYTESIZE_DEFAULT = 8
     _USER_CONFIG_STOPBITS_DEFAULT = 1
     _USER_CONFIG_PARITY_DEFAULT = "None"
-    _USER_CONFIG_TIMEOUT_DEFAULT = 1000
+    _USER_CONFIG_TIMEOUT_DEFAULT = 10000
 
     def _openSerialDialog(self) -> SerialDialog:
         serialDialog = self.getContext().openDialog(SerialDialog)

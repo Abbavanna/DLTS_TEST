@@ -8,7 +8,7 @@ Applets
 from typing import Dict
 
 from dltscontrol.apptk import Applet, showerror
-from dltscontrol.dlts import DltsConstants, DltsCommand, DltsConnection #AFP
+from dltscontrol.dlts import DltsConstants, DltsCommand, DltsConnection
 
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -78,7 +78,7 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         super().__init__(tkMaster, context)
         
         self.Window.title("Controller")
-        self.Window.geometry("650x400") #450x300 #AFP
+        self.Window.geometry("650x400")
 
         self.createMenuBarIfNotExistent()
 
@@ -287,7 +287,7 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         cprint(f'TEST', 'debug_p')
 
         dltsConnection.commandDataRetrieval(
-            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)  # AFP
+            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)
 
 
 

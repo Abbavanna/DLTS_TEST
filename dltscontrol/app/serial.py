@@ -183,7 +183,7 @@ class StandardSerialConfigurationPanel(VariabledSerialConfigurationPanel):
         portsFrame = ttk.Frame(self.MainFrame)
         portsLabel = ttk.Label(portsFrame, text = "Port:")
         self._portsOptionMenu = tkext.OptionMenu(portsFrame, self.PortVariable, next(iter(ports), None), *ports)
-        self.PortVariable.set('COM5')       # TODO: DEBUG.. Remove me later
+       #self.PortVariable.set('COM5')       # TODO: DEBUG.. Remove me later #PORT
 
         baudFrame = ttk.Frame(self.MainFrame)
         baudLabel = ttk.Label(baudFrame, text = "Baudrate:")

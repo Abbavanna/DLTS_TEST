@@ -39,7 +39,7 @@ from dltscontrol.app.scanningconfigurables import ConfigurableStandardScanCreati
 
 class MIScanConstants:
 
-    #Pavan Possibility , if latchup happens data point is 8 bytes, else data point is 2 .
+
     DATA_POINT_BYTE_COUNT = 8
     SCAN_START_COMMAND = str.encode("asn")
 

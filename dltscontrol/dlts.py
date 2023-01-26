@@ -31,7 +31,7 @@ import threading
 import pickle
 import skimage.transform as skitrans
 #
-from dltscontrol.color_print import cprint
+#from dltscontrol.color_print import #cprint
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class DltsConstants:
     DLTS_COMMAND_HEADER_LENGTH = 3
     DLTS_RESPONSE_HEADER_LENGTH = 3
 
-    DLTS_AUTOFOCUS_RESPONSE_LENGTH = 10  # NEW
+    DLTS_AUTOFOCUS_RESPONSE_LENGTH = 2  # NEW
 
     DLTS_RESPONSE_ACKNOWLEDGE = "ack"
     DLTS_RESPONSE_ERROR = "err"
@@ -98,13 +98,13 @@ class DltsCommand:
     _AREA = "a"
     _LATCHUP = "u"
     _MULTISCAN = "n"
-    _AUTOFOCUS = "J"
+    _AUTOFOCUS = "j" #pavan (p J n f)
 
 
     _STOP = "s"
 
     _PULSE = "p"
-    _FOCUS = "f"
+    _FOCUS = "F"   #pavan (p f n F)
 
     @staticmethod
     def _encode(command: str) -> bytes:
@@ -305,7 +305,7 @@ class DltsCommand:
 
     @staticmethod
     def ActionScanAutoFocus() -> bytes:
-        return DltsCommand.ActionScan(DltsCommand._AUTOFOCUS)
+        return DltsCommand.ActionScan(DltsCommand._AUTOFOCUS) #pavan ( ActionAutomatic ) TODO: focus
 
     @staticmethod
     def ActionScanPoint() -> bytes:
@@ -513,11 +513,11 @@ class DltsConnection:
                         raise DltsProtocolError("Dlts responded with '{}' to command '{}' but '{}' was expected."
                             .format(header, commandString, expectedResponseHeader))
                 except Exception as e:
-                    cprint(f' DATA UNREAD = {command[:DltsConstants.DLTS_COMMAND_HEADER_LENGTH]}', 'debug_r')
+                    print(f' DATA UNREAD = {command[:DltsConstants.DLTS_COMMAND_HEADER_LENGTH]}', 'debug_r')   #Pavan
             elif responseDataSize:
                 data = self.read(responseDataSize)
 
-            cprint(f'    {header} - {data} = {int.from_bytes(data, "big")if data is not None else None}')# TODO: DEBUG.. Remove me later
+            #cprint(f'    {header} - {data} = {int.from_bytes(data, "big")if data is not None else None}')# TODO: DEBUG.. Remove me later
 
             return data
         finally:
@@ -1214,36 +1214,36 @@ class Scan(IScan):
                 time.sleep(self._positioningTime_ms / 1000)
 
                 if self._laserMinIntensity is not None:  # NEW
-                    from dltscontrol.color_print import cprint
-                    cprint(f'    _laserMinIntensity', 'debug_w')
+                    #from dltscontrol.color_print import #cprint
+                    #cprint(f'    _laserMinIntensity', 'debug_w')
                     if hasattr(self, 'setScanLaserMinIntensity'):
                         self.setScanLaserMinIntensity(dltsConnection, self._laserMinIntensity)
 
                 if self._laserMaxIntensity is not None:  # NEW
-                    from dltscontrol.color_print import cprint
-                    cprint(f'    _laserMaxIntensity', 'debug_w')
+                    #from dltscontrol.color_print import #cprint
+                    #cprint(f'    _laserMaxIntensity', 'debug_w')
                     if hasattr(self, 'setScanLaserMaxIntensity'):
                         self.setScanLaserMaxIntensity(dltsConnection, self._laserMaxIntensity)
 
                 if self._laserStepIntensity is not None:  # NEW
-                    from dltscontrol.color_print import cprint
-                    cprint(f'    _laserStepIntensity', 'debug_w')
+                    #from dltscontrol.color_print import #cprint
+                    #cprint(f'    _laserStepIntensity', 'debug_w')
                     if hasattr(self, 'setScanLaserStepIntensity'):
                         self.setScanLaserStepIntensity(dltsConnection, self._laserStepIntensity)
 
                 if self._autoFocus:  # NEW
-                    from dltscontrol.color_print import cprint
+                    #from dltscontrol.color_print import #cprint
                     if hasattr(self, 'setAutoFocus'):
-                        cprint(f'    AUTO FOCUS', 'debug_w')
+                        #cprint(f'    AUTO FOCUS', 'debug_w')
                         self.setAutoFocus(dltsConnection)
                         # Forces read all data after this (3 bytes of unused data error)
                         extra_data = dltsConnection.readAll()
-                        if extra_data:
-                            cprint(f'extra_data = {extra_data}', 'debug_r')
+                       # if extra_data:
+                            #cprint(f'extra_data = {extra_data}', 'debug_r')
 
 
-                from dltscontrol.color_print import cprint
-                cprint(f'TEST SCAN', 'debug_b')
+                #from dltscontrol.color_print import #cprint
+                #cprint(f'TEST SCAN', 'debug_b')
                 # time.sleep(100)
 
                 self.onScanStart(dltsConnection)
@@ -1268,10 +1268,10 @@ class Scan(IScan):
                     if self._abortRequested:
                         self.onScanAbort(dltsConnection)
 
-                    cprint(f'{self.getScannedPointsCount()} of {self.getScanPointsCount()}', 'debug_w')
+                    #cprint(f'{self.getScannedPointsCount()} of {self.getScanPointsCount()}', 'debug_w')
 
                     if self._abortRequested or self.getScannedPointsCount() >= self.getScanPointsCount():
-                        cprint(f'STOP', 'debug_g')
+                        #cprint(f'STOP', 'debug_g')
                         self._scanningForDataPoints = False
 
             except Exception as ex:

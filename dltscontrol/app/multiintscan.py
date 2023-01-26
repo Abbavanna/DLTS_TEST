@@ -1,21 +1,19 @@
 """
-Extension which adds a new `IScan`, the `LatchupScan`, to the application with all his data structures to be possibly reused. Provides 
+Extension which adds a new `Multi Intensity Scan`, to the application with all his data structures to be possibly reused. Provides
 panels, dialogs and services to create such a scan.
 
-Reuse
------
-You may implement the `ILatchupScanDataPoint` in your own custom `ScanDataPoint` to provide also a `LatchupImage` in your own `IScanImage` implementation. 
+MI = MULTI INTENSITY
 
 Interfaces
 ----------
-Panels: `LatchupScanCreationPanel`.
-Dialogs: `LatchupScanCreationDialog`.
+Panels: `MIScanCreationPanel`.
+Dialogs: `MIScanCreationDialog`.
 
 Implementations
 ---------------
-Panels: `StandardLatchupScanCreationPanel`.
-Dialogs: `StandardLatchupScanCreationDialog`.
-Services: `LatchupScanCreationService`.
+Panels: `StandardMIScanCreationPanel`.
+Dialogs: `StandardMIScanCreationDialog`.
+Services: `MIScanCreationService`.
 """
 
 from dltscontrol.dlts import DltsConstants, DltsCommand, DltsConnection, IScanDataPoint, ScanDataPoint, Scan, ScanImage
@@ -38,14 +36,14 @@ from dltscontrol.app.scanningconfigurables import ConfigurableStandardScanCreati
 
 
 class MIScanConstants:
+    """ Constants for the Multi Intensity scan and related classes. """
 
-
-    DATA_POINT_BYTE_COUNT = 8
-    SCAN_START_COMMAND = str.encode("asn")
+    DATA_POINT_BYTE_COUNT = 8   #  The number of bytes in a data point of a multi intensity scan.
+    SCAN_START_COMMAND = str.encode("asn") # The command to start a multi intensity scan.
 
 
 class IMIScanDataPoint(IScanDataPoint):
-    """ A scan data point which holds a latchup current value. """
+    """ A scan data point which holds a latchup current,reflectivity and voltage value. """
 
     def getLatchUpCurrent(self) -> int:
         """ The first two bytes contain the latch up current. """
@@ -56,14 +54,14 @@ class IMIScanDataPoint(IScanDataPoint):
         raise NotImplementedError
 
     def getLatchUpVoltage(self) -> int:
-        """ the last byte contains the reflection value. """
+        """ the last byte contains the voltage value. """
         raise NotImplementedError
 
 
 
 
 class MILatchupImage(ScanImage):
-    """ A scan image which consists of the latchup current values of `ILatchupScanDataPoint`s. """
+    """ A scan image which consists of the latchup current values of `IMIScanDataPoint`s. """
 
     _NAME = "Latch-Up Current Image"
 
@@ -85,28 +83,22 @@ class MILatchupImage(ScanImage):
         return self._NAME
 
     def convertDataPoint(self, dataPoint: IMIScanDataPoint):
-        from dltscontrol.color_print import cprint
-        # retval = dataPoint.getLatchUpCurrent()
-        # test_value = dataPoint.debug_get_all_as_list()  # TEST ONLY
-        # cprint(f'get_all = {test_value}', 'debug_p')
         return dataPoint.getLatchUpCurrent()
 
     @staticmethod
     def detect_latchup_condition(data):
-        # TODO: test latchup condition here
+        # TODO: latchup condition here. Keep this if you want to have latchup check in python instead of in msp430 file
         #  ( current > 13 ma or voltage < 100)
-        # temp_return_value = [test for test in data if test > 13]  # TEST ONLY
+        # temp_return_value = [test for test in data if test > 13]
         # data_len = len(temp_return_value) if len(temp_return_value) > 0 else 1
-        # return_value = int(sum(temp_return_value) / data_len)  # TEST ONLY
-        #
+        # return_value = int(sum(temp_return_value) / data_len)
         # return return_value
-
-        return int(sum(data) / len(data))  # TEST ONLY
+        return int(sum(data) / len(data))
 
 
 
 class MILaserImage(ScanImage):
-    """ A scan image which consists of the latchup current values of `ILatchupScanDataPoint`s. """
+    """ A scan image which consists of the threshold intensity values of `IMIScanDataPoint`s. """
 
     _NAME = "Laser Intensity"
 
@@ -132,11 +124,11 @@ class MILaserImage(ScanImage):
 
     @staticmethod
     def detect_latchup_condition(data):
-        return int(sum(data) / len(data))  # TEST ONLY
+        return int(sum(data) / len(data))
 
 
 class MIReflectionImage(ScanImage):
-    """ 2D scan image which contains the number of registers. """
+    """ A scan image which consists of the reflectivity values of `IMIScanDataPoint`s """
 
     _NAME = "Reflection Scan Image"
 
@@ -153,11 +145,11 @@ class MIReflectionImage(ScanImage):
     #
     @staticmethod
     def detect_latchup_condition(data):
-        return int(sum(data) / len(data))  # TEST ONLY
+        return int(sum(data) / len(data))
 
 
 class MIVoltageImage(ScanImage):
-    """ 2D scan image which contains the number of registers. """
+    """ A scan image which consists of the voltage values of `IMIScanDataPoint`s """
 
     _NAME = "Voltage Scan Image"
 
@@ -191,22 +183,22 @@ class MIVoltageImage(ScanImage):
 
     @staticmethod
     def detect_latchup_condition(data):
-        # TODO: test latchup condition here
+        # TODO: latchup condition here. Keep this if you want to have latchup check in python instead of in msp430 file
         #  ( current > 13 ma or voltage < 100)
-        # temp_return_value = [test for test in data if test < 100]  # TEST ONLY
+        # temp_return_value = [test for test in data if test < 100]
         # data_len = len(temp_return_value) if len(temp_return_value) > 0 else 1
-        # return_value = int(sum(temp_return_value) / data_len)  # TEST ONLY
+        # return_value = int(sum(temp_return_value) / data_len)
         # return return_value
 
-        return int(sum(data) / len(data))  # TEST ONLY
+        return int(sum(data) / len(data))
 
 
 
 
 
 
-class MIScanDataPoint(ScanDataPoint, IMIScanDataPoint):  # THIS
-    """ The scan data point of a `ParallelScan`. """
+class MIScanDataPoint(ScanDataPoint, IMIScanDataPoint):
+    """ The scan data point of a `Multi Intensity Scan`. """
 
     def __init__(self, rawData):
         super().__init__(rawData)
@@ -214,30 +206,22 @@ class MIScanDataPoint(ScanDataPoint, IMIScanDataPoint):  # THIS
     def getReflectionValue(self):
         return int.from_bytes(self.RawData[-8:-6], DltsConstants.DLTS_INT_BYTE_ORDER)
 
-    def getLaserValue(self):  # TEST  # NEW
+    def getLaserValue(self):
         return int.from_bytes(self.RawData[-6:-4], DltsConstants.DLTS_INT_BYTE_ORDER)
 
     def getLatchUpCurrent(self):
         return int.from_bytes(self.RawData[-4:-2], DltsConstants.DLTS_INT_BYTE_ORDER)
 
     def getLatchUpVoltage(self):
-        # selecting array elements in python: [start:stop:step length]#negative values are used as [array length - value]
         return int.from_bytes(self.RawData[-2:], DltsConstants.DLTS_INT_BYTE_ORDER)
 
 
-    def debug_get_all_as_list(self):
+    def debug_get_all_as_list(self): #Return all the raw data as a list
         return list(self.RawData)
 
 
 class MIScan(Scan):
-    """ A scan which scans for latchup currents. Generates a `LatchupScanImage`.
-
-    Parameters
-    ----------
-    latchupTurnOffDelay_ms: `int` (default: `0`)
-        The time after which to turn of the power supply to the scanned chip after a latchup has been detected.
-    latchupTurnOffDelay_us: `int` (default: `0`)
-        Has no effect and is not used anymore.
+    """ A scan which scans for latchup currents,voltages,intensities and reflectivity values. Generates a `MIScanImage`.
     """
 
     _NAME = "Multi Intensity Scan"
@@ -249,10 +233,10 @@ class MIScan(Scan):
                  xTilt=None,
                  zPosition=None,
                  laserIntensity=None,
-                 autoFocus=None,  # NEW
-                 laserMinIntensity=None,  # NEW
-                 laserMaxIntensity=None,  # NEW
-                 laserStepIntensity=None,  # NEW
+                 autoFocus=None,
+                 laserMinIntensity=None,
+                 laserMaxIntensity=None,
+                 laserStepIntensity=None,
                  ):
         super().__init__(
             config,
@@ -260,10 +244,10 @@ class MIScan(Scan):
             xTilt,
             zPosition,
             laserIntensity,
-            autoFocus,  # NEW
+            autoFocus,
             laserMinIntensity,
-            laserMaxIntensity,  # NEW
-            laserStepIntensity  # NEW
+            laserMaxIntensity,
+            laserStepIntensity
         )
 
         self._latchupTurnOffDelay_ms = latchupTurnOffDelay_ms
@@ -276,11 +260,6 @@ class MIScan(Scan):
         return self._NAME
 
     def createScanImages(self, dataPoints):
-        from dltscontrol.color_print import cprint
-        cprint(f'self.getAreaConfig().MinPosition = {self.getAreaConfig().MinPosition}', 'debug_b')
-        cprint(f'self.getAreaConfig().ScanImageSize = {self.getAreaConfig().ScanImageSize}', 'debug_b')
-        cprint(f'self.getAreaConfig().ScanResolution = {self.getAreaConfig().ScanResolution}', 'debug_b')
-
 
 
         return (MILatchupImage(dataPoints,
@@ -329,44 +308,41 @@ class MIScan(Scan):
 
     def onScanStart(self, dltsConnection: DltsConnection):
         dltsConnection.commandSet(DltsCommand.SetLatchUpTurnOffDelayMilliseconds(self.LatchupTurnOffDelay_ms))
-        # dltsConnection.commandScanStart(DltsCommand.ActionScanMultiScan())
         dltsConnection.commandScanStart(MIScanConstants.SCAN_START_COMMAND)
 
-    def setAutoFocus(self, dltsConnection: DltsConnection):  # NEW
+    def setAutoFocus(self, dltsConnection: DltsConnection):
         # send an autofocus command to the DLTS
         dltsConnection.commandDataRetrieval(
-            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)  # NEW
+            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH) #TODO: focus
 
-    def setScanLaserMinIntensity(self, dltsConnection: DltsConnection, value):  # NEW
+    def setScanLaserMinIntensity(self, dltsConnection: DltsConnection, value):
         # send Laser Minimum Intensity Value to the DLTS
-        dltsConnection.commandSet(DltsCommand.SetLaserMinIntensity(value))  # TEST
+        dltsConnection.commandSet(DltsCommand.SetLaserMinIntensity(value))
 
-    def setScanLaserMaxIntensity(self, dltsConnection: DltsConnection, value):  # NEW
+    def setScanLaserMaxIntensity(self, dltsConnection: DltsConnection, value):
         # send Laser Minimum Intensity Value to the DLTS
-        dltsConnection.commandSet(DltsCommand.SetLaserMaxIntensity(value))  # TEST
+        dltsConnection.commandSet(DltsCommand.SetLaserMaxIntensity(value))
 
-    def setScanLaserStepIntensity(self, dltsConnection: DltsConnection, value):  # NEW
+    def setScanLaserStepIntensity(self, dltsConnection: DltsConnection, value):
         # send Laser Intensity Step Value to the DLTS
-        dltsConnection.commandSet(DltsCommand.SetLaserIntensityStep(value))  # TEST
+        dltsConnection.commandSet(DltsCommand.SetLaserIntensityStep(value))
 
     def onScanAbort(self, dltsConnection: DltsConnection):
         dltsConnection.commandSkipUntilResponse(DltsCommand.ActionScanStop(), DltsConstants.DLTS_RESPONSE_ACKNOWLEDGE)
 
     def onReceiveDataPoint(self, dltsConnection: DltsConnection):
-        # from dltscontrol.color_print import cprint
-        # cprint(f'TEST', 'debug_r')
         return MIScanDataPoint(dltsConnection.read(MIScanConstants.DATA_POINT_BYTE_COUNT))
 
 
 class MIScanCreationService(ScanCreationService[MIScan]):
-    """ Scan creation service to create a `LatchupScan`. """
+    """ Scan creation service to create a `Multi Intensity Scan`. """
 
     def createScan(self) -> MIScan:
         return self.getContext().openDialog(MIScanCreationDialog).waitForResult()
 
 
 class MIScanCreationPanel(StandardScanCreationPanel):
-    """ Panel to create and configure a `LatchupScan` """
+    """ Panel to create and configure a `Multi Intensity Scan` """
 
     def getLatchupTurnOffDelayMilliseconds(self) -> int:
         raise NotImplementedError
@@ -375,29 +351,28 @@ class MIScanCreationPanel(StandardScanCreationPanel):
         raise NotImplementedError
 
     def createScan(self) -> MIScan:
-        # HERE HERE
 
-        # TODO: Clean this up.. Messy implementation
+        # To create scan images for all intensities given, multiply the number of intensity to determine the data points.
         import math
         intensity_multiplier = math.floor(
-            (self.getLaserMaxIntensity() - self.getLaserMinIntensity()) / self.getLaserStepIntensity()) + 1
+            (self.getLaserMaxIntensity() - self.getLaserMinIntensity())+ self.getLaserStepIntensity()) + 1
 
         return MIScan(
-            self.getScanAreaConfigurationPanel().createAreaScanConfig(intensity_multiplier),  # TEST
+            self.getScanAreaConfigurationPanel().createAreaScanConfig(intensity_multiplier),
             self.getLatchupTurnOffDelayMilliseconds(),
             self.getPositioningTime_ms(),
             self.getXTilt(),
             self.getZPosition(),
             self.getLaserIntensity(),
-            self.getAutoFocusVariable(),  # NEW
-            self.getLaserMinIntensity(),  # NEW
-            self.getLaserMaxIntensity(),  # NEW
-            self.getLaserStepIntensity()  # NEW
+            self.getAutoFocusVariable(),
+            self.getLaserMinIntensity(),
+            self.getLaserMaxIntensity(),
+            self.getLaserStepIntensity()
         )
 
 
 class VariabledMIScanCreationPanel(VariabledStandardScanCreationPanel, MIScanCreationPanel):
-    """ A `LatchupScanCreationPanel` whose values are stored in tkinter variables. """
+    """ A `MIScanCreationPanel` whose values are stored in tkinter variables. """
 
     _DEFAULT_LATCHUP_TURN_OFF_MILLISECONDS = 1
 
@@ -406,10 +381,10 @@ class VariabledMIScanCreationPanel(VariabledStandardScanCreationPanel, MIScanCre
 
         self._latchupTurnOffMilliVar = tkext.IntNoneVar(self.getTk(), self._DEFAULT_LATCHUP_TURN_OFF_MILLISECONDS)
 
-        self._autoFocusVariable = tk.IntVar()  # NEW
-        self._autoFocusVariable.set(0)  # NEW  # Initializes the value to "unset"
+        self._autoFocusVariable = tk.IntVar()
+        self._autoFocusVariable.set(0)  # Initializes the value to "unset"
 
-    @property  # NEW
+    @property
     def autoFocusVariable(self):
         return self._autoFocusVariable
 
@@ -433,7 +408,7 @@ class VariabledMIScanCreationPanel(VariabledStandardScanCreationPanel, MIScanCre
 class StandardMIScanCreationPanel(StandardMultiIntScanCreationPanel,
                                   VariabledMIScanCreationPanel,
                                   MIScanCreationPanel):
-    """ Default `LatchupScanCreationPanel` implementation. """
+    """ Default `MIScanCreationPanel` implementation. """
 
     def __init__(self, tkMaster, context, componentContext):
         super().__init__(tkMaster, context, componentContext)
@@ -443,7 +418,7 @@ class StandardMIScanCreationPanel(StandardMultiIntScanCreationPanel,
         autoFocusButton = ttk.Checkbutton(latchupTimesFrame,
                                           text="Auto Focus",
                                           width=15,
-                                          variable=self.autoFocusVariable)  # NEW
+                                          variable=self.autoFocusVariable)
 
         latchupTimesLabel = ttk.Label(latchupTimesFrame, text="Latchup Turn Off Delay [ms]")
         millisEntry = tkext.IntEntry(latchupTimesFrame, width=self._ENTRY_WIDTH,
@@ -452,7 +427,7 @@ class StandardMIScanCreationPanel(StandardMultiIntScanCreationPanel,
         millisEntry.pack(side=tk.RIGHT, padx=self._ENTRY_PADX)
         latchupTimesLabel.pack(side=tk.RIGHT)
 
-        autoFocusButton.pack(side=tk.RIGHT, padx=15, pady=2)  # NEW
+        autoFocusButton.pack(side=tk.RIGHT, padx=15, pady=2)
         latchupTimesFrame.pack(side=tk.TOP, fill=tk.X, padx=self._VARIABLE_PADX, pady=self._VARIABLE_PADY)
 
 
@@ -467,7 +442,7 @@ class MIScanCreationDialog(ScanCreationDialog):
 
 
 class StandardMIScanCreationDialog(MIScanCreationDialog, ConfigurableStandardScanCreationDialog, PaneledOkAbortDialog):
-    """ Default `LatchupScanCreationDialog` implementation which uses user configured default values to fill in the
+    """ Default `MIScanCreationDialog` implementation which uses user configured default values to fill in the
     values of the scan creation panel. """
 
     _LATCHUP_USER_CONFIG_SECTION = "Multi Intensity Scan Dialog"

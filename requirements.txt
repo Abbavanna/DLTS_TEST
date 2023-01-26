@@ -3,5 +3,5 @@ pyserial
 numpy
 scipy
 scikit-image
-matplotlib==3.5.2
+matplotlib==3.6.2
 jsonpickle

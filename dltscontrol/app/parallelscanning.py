@@ -164,14 +164,14 @@ class ParallelScan(Scan):
     def setAutoFocus(self, dltsConnection: DltsConnection):  # NEW
         # send an autofocus command to the DLTS
         dltsConnection.commandDataRetrieval(
-            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)  # NEW
+            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)  # NEW TODO: focus
 
     def onScanAbort(self, dltsConnection: DltsConnection):
         # send the scan abort command
         dltsConnection.commandSkipUntilResponse(DltsCommand.ActionScanStop(), DltsConstants.DLTS_RESPONSE_ACKNOWLEDGE)
 
     def onReceiveDataPoint(self, dltsConnection: DltsConnection):
-        from dltscontrol.color_print import cprint
+        #from dltscontrol.color_print import cprint
 
         ret_val = ParallelScanDataPoint(dltsConnection.read(ParallelScanConstants.DATA_POINT_BYTE_COUNT))
         # receive the data point which consists of five bytes

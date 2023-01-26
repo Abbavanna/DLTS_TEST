@@ -283,11 +283,11 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         # send an autofocus command to the DLTS
 
         dltsConnection = self.getDlts().DltsConnection
-        from dltscontrol.color_print import cprint
-        cprint(f'TEST', 'debug_p')
+        #from dltscontrol.color_print import #cprint
+        #cprint(f'TEST', 'debug_p')
 
         dltsConnection.commandDataRetrieval(
-            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH)
+            DltsCommand.ActionScanAutoFocus(), DltsConstants.DLTS_AUTOFOCUS_RESPONSE_LENGTH) #TODO: focus
 
 
 
@@ -379,8 +379,8 @@ class MainController(Applet, IDltsComponent, IUserConfigComponent):
         self.getDlts()
 
     def onFocusIn(self, event):
-        from dltscontrol.color_print import cprint
-        cprint(f'onFocusIn', 'debug_r')
+        #from dltscontrol.color_print import #cprint
+        #cprint(f'onFocusIn', 'debug_r')
 
         super().onFocusIn(event)
         # TODO: DEBUG.. Remove all below me later
